@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /admins/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create: if isAdmin() ||
+        (isSelf(uid) && request.resource.data.email == request.auth.token.email);
+      allow update, delete: if isAdmin();
+    }
+
+    match /employees/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() ||
+        (isSelf(uid) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['photoUrl', 'updatedAt']));
+    }
+
+    match /employeeMessages/{id} {
+      allow create: if signedIn()
+        && request.resource.data.employeeUid == request.auth.uid
+        && request.resource.data.kind in ['absence', 'issue']
+        && request.resource.data.status == 'open';
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.employeeUid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /usernames/{username} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /accessCodes/{code} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /attendance/{id} {
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.employeeUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.employeeUid == request.auth.uid
+        && request.resource.data.locationStatus == 'Verified'
+        && request.resource.data.latitude is number
+        && request.resource.data.longitude is number;
+      allow update, delete: if isAdmin();
+    }
+  }
+}
