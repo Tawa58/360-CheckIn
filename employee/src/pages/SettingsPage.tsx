@@ -30,7 +30,7 @@ export function SettingsPage() {
     setNotice('');
     try {
       const photoUrl = await compressProfileImage(file);
-      await saveProfilePhoto(profile.authUid, photoUrl);
+      await saveProfilePhoto(profile.employeeId, photoUrl);
       await refreshEmployee();
       setNotice('Profile photo updated.');
     } catch (err) {
@@ -48,7 +48,7 @@ export function SettingsPage() {
     setError('');
     setNotice('');
     try {
-      await clearProfilePhoto(profile.authUid);
+      await clearProfilePhoto(profile.employeeId);
       await refreshEmployee();
       setNotice('Profile photo removed.');
     } catch (err) {

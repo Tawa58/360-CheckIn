@@ -5,27 +5,39 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isEmployeeAccount() {
+      return request.auth.token.email.matches('.*@companycheckin\\.internal$');
+    }
+
+    function isAuthorizedAdminEmail() {
+      return request.auth.token.email.lower() in [
+        'test@gmail.com',
+      ];
+    }
+
     function isAdmin() {
-      return signedIn() &&
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return signedIn() && isAuthorizedAdminEmail();
     }
 
-    function isSelf(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
-
-    match /admins/{uid} {
-      allow read: if isSelf(uid) || isAdmin();
+    match /admins/{adminId} {
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if isAdmin() ||
-        (isSelf(uid) && request.resource.data.email == request.auth.token.email);
+        (signedIn() &&
+          request.resource.data.uid == request.auth.uid &&
+          !isEmployeeAccount() &&
+          request.resource.data.email == request.auth.token.email &&
+          isAuthorizedAdminEmail());
       allow update, delete: if isAdmin();
     }
 
-    match /employees/{uid} {
-      allow read: if isSelf(uid) || isAdmin();
+    match /employees/{employeeId} {
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.authUid == request.auth.uid);
       allow create, delete: if isAdmin();
       allow update: if isAdmin() ||
-        (isSelf(uid) &&
+        (signedIn() &&
+          resource.data.authUid == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['photoUrl', 'updatedAt']));
     }
@@ -59,6 +71,32 @@ service cloud.firestore {
         && request.resource.data.latitude is number
         && request.resource.data.longitude is number;
       allow update, delete: if isAdmin();
+    }
+
+    match /settings/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /boundaryEvents/{id} {
+      allow create: if signedIn()
+        && request.resource.data.employeeUid == request.auth.uid
+        && request.resource.data.eventType == 'EXIT'
+        && request.resource.data.status == 'open';
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.employeeUid == request.auth.uid);
+      allow update: if isAdmin() ||
+        (signedIn()
+          && resource.data.employeeUid == request.auth.uid
+          && request.resource.data.employeeUid == resource.data.employeeUid
+          && request.resource.data.employeeId == resource.data.employeeId
+          && request.resource.data.eventId == resource.data.eventId
+          && request.resource.data.exitTime == resource.data.exitTime
+          && request.resource.data.eventDate == resource.data.eventDate
+          && request.resource.data.geofenceId == resource.data.geofenceId
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.eventType == 'EXIT');
+      allow delete: if isAdmin();
     }
   }
 }

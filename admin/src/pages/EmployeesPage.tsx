@@ -8,7 +8,6 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  Search,
   Users,
 } from 'lucide-react';
 import {
@@ -17,14 +16,26 @@ import {
   renewAccessCode,
   updateEmployeeDetails,
 } from '../lib/employees';
-import type {Employee} from '@shared/types';
-import {daysUntil, formatExpiry, isExpired} from '@shared/dates';
+import {listAttendance} from '../lib/attendance';
+import {
+  buildMonthlyReport,
+  currentMonthValue,
+  formatMonthLabel,
+  type EmployeeMonthRow,
+} from '../lib/monthlyReport';
+import type {AttendanceRecord, Employee} from '@shared/types';
+import {departmentOptions} from '@shared/departments';
+import {exactEmployeeMatch, matchesEmployeeQuery} from '@shared/employeeSearch';
+import {daysUntil, formatDisplayDate, formatExpiry, isExpired} from '@shared/dates';
 import {Modal} from '../components/Modal';
 import {Avatar} from '../components/Avatar';
+import {EmployeeSearch} from '../components/EmployeeSearch';
 
 export function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [query, setQuery] = useState('');
+  const [selectedUid, setSelectedUid] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
@@ -32,10 +43,12 @@ export function EmployeesPage() {
   const [issued, setIssued] = useState<Employee | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [renewing, setRenewing] = useState<string | null>(null);
+  const month = currentMonthValue();
 
   async function refresh() {
-    const rows = await listEmployees();
+    const [rows, attendance] = await Promise.all([listEmployees(), listAttendance()]);
     setEmployees(rows);
+    setRecords(attendance);
   }
 
   useEffect(() => {
@@ -48,17 +61,58 @@ export function EmployeesPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    const value = query.trim().toLowerCase();
+    const value = query.trim();
     if (!value) {
       return employees;
     }
-    return employees.filter(employee =>
-      [employee.fullName, employee.department, employee.username, employee.accessCode]
-        .join(' ')
-        .toLowerCase()
-        .includes(value),
-    );
+    return employees.filter(employee => matchesEmployeeQuery(employee, value));
   }, [employees, query]);
+
+  const selectedEmployee =
+    employees.find(employee => employee.authUid === selectedUid) ??
+    (filtered.length === 1 ? filtered[0] : undefined);
+
+  const monthRow = useMemo(() => {
+    if (!selectedEmployee) {
+      return null;
+    }
+    return (
+      buildMonthlyReport({
+        month,
+        employees: [selectedEmployee],
+        records,
+        employeeUid: selectedEmployee.authUid,
+      }).rows[0] ?? null
+    );
+  }, [month, records, selectedEmployee]);
+
+  const recentCheckIns = useMemo(() => {
+    if (!selectedEmployee) {
+      return [];
+    }
+    return records
+      .filter(record => record.employeeUid === selectedEmployee.authUid)
+      .slice(0, 8);
+  }, [records, selectedEmployee]);
+
+  function selectEmployee(employee: Employee) {
+    setSelectedUid(employee.authUid);
+    setQuery(employee.fullName);
+  }
+
+  function onQueryChange(value: string) {
+    setQuery(value);
+    const current = employees.find(employee => employee.authUid === selectedUid);
+    if (current && matchesEmployeeQuery(current, value)) {
+      return;
+    }
+    const exact = exactEmployeeMatch(employees, value);
+    if (exact) {
+      setSelectedUid(exact.authUid);
+      return;
+    }
+    setSelectedUid('');
+  }
 
   async function onRenew(employee: Employee) {
     if (
@@ -90,7 +144,7 @@ export function EmployeesPage() {
             Employees
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 sm:text-base">
-            Register staff, manage details, and renew access codes.
+            Register staff, search anyone, and see their department and attendance.
           </p>
         </div>
         <button
@@ -102,14 +156,19 @@ export function EmployeesPage() {
         </button>
       </header>
 
-      <div className="relative mt-5 sm:max-w-md">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-        <input
-          type="search"
-          className="field-input pl-11"
-          placeholder="Search name, department, username, code"
-          value={query}
-          onChange={event => setQuery(event.target.value)}
+      <div className="relative mt-5 sm:max-w-xl">
+        <EmployeeSearch
+          employees={employees}
+          query={query}
+          selectedUid={selectedEmployee?.authUid ?? ''}
+          label="Search employee"
+          placeholder="Search name, username, ID, department, or code"
+          onQueryChange={onQueryChange}
+          onSelect={selectEmployee}
+          onClear={() => {
+            setQuery('');
+            setSelectedUid('');
+          }}
         />
       </div>
 
@@ -127,6 +186,15 @@ export function EmployeesPage() {
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
           <p>{notice}</p>
         </div>
+      ) : null}
+
+      {selectedEmployee && monthRow ? (
+        <EmployeeLookup
+          employee={selectedEmployee}
+          monthLabel={formatMonthLabel(month)}
+          monthRow={monthRow}
+          checkIns={recentCheckIns}
+        />
       ) : null}
 
       {loading ? (
@@ -157,7 +225,14 @@ export function EmployeesPage() {
           {/* Mobile cards */}
           <div className="mt-6 space-y-3 lg:hidden">
             {filtered.map(employee => (
-              <article key={employee.authUid} className="card p-4">
+              <article
+                key={employee.authUid}
+                className={`card cursor-pointer p-4 ${
+                  selectedEmployee?.authUid === employee.authUid
+                    ? 'ring-2 ring-brand-500/40'
+                    : ''
+                }`}
+                onClick={() => selectEmployee(employee)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
                     <Avatar name={employee.fullName} photoUrl={employee.photoUrl} />
@@ -196,7 +271,10 @@ export function EmployeesPage() {
                   <button
                     type="button"
                     className="btn-outline"
-                    onClick={() => setEditing(employee)}>
+                    onClick={event => {
+                      event.stopPropagation();
+                      setEditing(employee);
+                    }}>
                     <Pencil className="h-4 w-4" />
                     Edit
                   </button>
@@ -204,7 +282,10 @@ export function EmployeesPage() {
                     type="button"
                     disabled={renewing === employee.authUid}
                     className="btn bg-accent-50 text-accent-600 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-200 dark:hover:bg-accent-500/25"
-                    onClick={() => onRenew(employee)}>
+                    onClick={event => {
+                      event.stopPropagation();
+                      onRenew(employee);
+                    }}>
                     {renewing === employee.authUid ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
@@ -233,7 +314,12 @@ export function EmployeesPage() {
                 {filtered.map(employee => (
                   <tr
                     key={employee.authUid}
-                    className="transition hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                    className={`cursor-pointer transition hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
+                      selectedEmployee?.authUid === employee.authUid
+                        ? 'bg-brand-50/70 dark:bg-brand-500/10'
+                        : ''
+                    }`}
+                    onClick={() => selectEmployee(employee)}>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <Avatar name={employee.fullName} photoUrl={employee.photoUrl} />
@@ -269,7 +355,10 @@ export function EmployeesPage() {
                         <button
                           type="button"
                           className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-slate-800"
-                          onClick={() => setEditing(employee)}>
+                          onClick={event => {
+                            event.stopPropagation();
+                            setEditing(employee);
+                          }}>
                           <Pencil className="h-4 w-4" />
                           Edit
                         </button>
@@ -277,7 +366,10 @@ export function EmployeesPage() {
                           type="button"
                           disabled={renewing === employee.authUid}
                           className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-accent-600 transition hover:bg-accent-50 disabled:opacity-50 dark:text-accent-200 dark:hover:bg-accent-500/15"
-                          onClick={() => onRenew(employee)}>
+                          onClick={event => {
+                            event.stopPropagation();
+                            onRenew(employee);
+                          }}>
                           {renewing === employee.authUid ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
@@ -322,6 +414,130 @@ export function EmployeesPage() {
         <IssuedCodeModal employee={issued} onClose={() => setIssued(null)} />
       ) : null}
     </div>
+  );
+}
+
+function dayStatusClass(status: string) {
+  if (status === 'Present') {
+    return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300';
+  }
+  if (status === 'Rejected') {
+    return 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300';
+  }
+  return 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300';
+}
+
+function EmployeeLookup({
+  employee,
+  monthLabel,
+  monthRow,
+  checkIns,
+}: {
+  employee: Employee;
+  monthLabel: string;
+  monthRow: EmployeeMonthRow;
+  checkIns: AttendanceRecord[];
+}) {
+  return (
+    <section className="card mt-6 p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <Avatar name={employee.fullName} photoUrl={employee.photoUrl} />
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+              {employee.fullName}
+            </h2>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              {employee.employeeId} · {employee.department}
+            </p>
+            <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
+              @{employee.username}
+              {employee.email ? ` · ${employee.email}` : ''}
+            </p>
+            <p className="mt-1 font-mono text-sm font-semibold tracking-wider text-brand-800 dark:text-brand-300">
+              {employee.accessCode}
+            </p>
+          </div>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{monthLabel}</p>
+      </div>
+
+      <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-2xl bg-slate-50 px-3 py-3 dark:bg-slate-800/80">
+          <dt className="text-xs text-slate-400">Present</dt>
+          <dd className="mt-1 text-xl font-semibold text-emerald-700 dark:text-emerald-300">
+            {monthRow.presentDays}
+          </dd>
+        </div>
+        <div className="rounded-2xl bg-slate-50 px-3 py-3 dark:bg-slate-800/80">
+          <dt className="text-xs text-slate-400">Absent</dt>
+          <dd className="mt-1 text-xl font-semibold text-rose-700 dark:text-rose-300">
+            {monthRow.absentDays}
+          </dd>
+        </div>
+        <div className="rounded-2xl bg-slate-50 px-3 py-3 dark:bg-slate-800/80">
+          <dt className="text-xs text-slate-400">Rejected</dt>
+          <dd className="mt-1 text-xl font-semibold text-amber-700 dark:text-amber-300">
+            {monthRow.rejectedDays}
+          </dd>
+        </div>
+        <div className="rounded-2xl bg-slate-50 px-3 py-3 dark:bg-slate-800/80">
+          <dt className="text-xs text-slate-400">Attendance</dt>
+          <dd className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">
+            {monthRow.attendanceRate}%
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">This month</h3>
+          <div className="mt-3 max-h-72 divide-y divide-slate-100 overflow-auto rounded-2xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+            {monthRow.days.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-slate-500">No working days to show yet.</p>
+            ) : (
+              monthRow.days.map(day => (
+                <div key={day.date} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <p className="text-sm text-slate-700 dark:text-slate-200">
+                    {day.weekday} {day.date}
+                  </p>
+                  <span className={`badge ${dayStatusClass(day.status)}`}>{day.status}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recent check-ins</h3>
+          <div className="mt-3 max-h-72 divide-y divide-slate-100 overflow-auto rounded-2xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+            {checkIns.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-slate-500">No attendance records yet.</p>
+            ) : (
+              checkIns.map(record => (
+                <div key={record.attendanceId} className="flex items-center gap-3 px-4 py-2.5">
+                  <Avatar name={employee.fullName} photoUrl={employee.photoUrl} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                        {employee.fullName}
+                      </p>
+                      <span className={`badge shrink-0 ${dayStatusClass(record.locationStatus === 'Verified' ? 'Present' : 'Rejected')}`}>
+                        {record.locationStatus}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-slate-400">
+                      {formatDisplayDate(record.checkInDate)} · {record.checkInTime}
+                      {' · '}
+                      {record.department}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -415,19 +631,14 @@ function RegisterModal({
           label="Full name"
           value={fullName}
           onChange={setFullName}
-          placeholder="Jane Doe"
+          placeholder="msekiwa"
         />
-        <Field
-          label="Department"
-          value={department}
-          onChange={setDepartment}
-          placeholder="Operations"
-        />
+        <DepartmentField value={department} onChange={setDepartment} />
         <Field
           label="Username"
           value={username}
           onChange={setUsername}
-          placeholder="jane.doe"
+          placeholder="msekiwa"
           hint="3–32 characters: letters, numbers, dots, or underscores."
         />
         <Field
@@ -495,7 +706,11 @@ function EditModal({
       onClose={onClose}>
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label="Full name" value={fullName} onChange={setFullName} />
-        <Field label="Department" value={department} onChange={setDepartment} />
+        <DepartmentField
+          value={department}
+          onChange={setDepartment}
+          current={employee.department}
+        />
         {error ? (
           <div
             role="alert"
@@ -529,8 +744,9 @@ function IssuedCodeModal({
   return (
     <Modal title="Employee access code" onClose={onClose}>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        Share this code with {employee.fullName}. It is valid for 4 months and is not
-        regenerated during daily check-in.
+        This code was generated with the account and saved on {employee.fullName}’s
+        employee record. It is valid for 4 months and is not regenerated during daily
+        check-in.
       </p>
       <div className="mt-4 rounded-3xl bg-brand-50 px-4 py-6 text-center ring-1 ring-brand-100 dark:bg-brand-500/10 dark:ring-brand-500/25">
         <p className="font-mono text-3xl font-bold tracking-[0.18em] text-brand-800 dark:text-brand-200 sm:text-4xl">
@@ -585,6 +801,36 @@ function CopyCodeButton({value}: {value: string}) {
         </>
       )}
     </button>
+  );
+}
+
+function DepartmentField({
+  value,
+  onChange,
+  current,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  current?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="field-label">Department</span>
+      <select
+        required
+        className="field-input mt-1.5"
+        value={value}
+        onChange={event => onChange(event.target.value)}>
+        <option value="" disabled>
+          Select department
+        </option>
+        {departmentOptions(current).map(item => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

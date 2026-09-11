@@ -1,8 +1,18 @@
 /**
- * Set USE_FIREBASE_EMULATOR to false and paste production credentials
- * when connecting to a real Firebase project.
+ * Firebase settings come from the repo-root .env file.
+ * Copy .env.example to .env and fill in the project values.
  */
-export const USE_FIREBASE_EMULATOR = true;
+function trimEnv(value: string | undefined): string {
+  return (value ?? '').trim();
+}
+
+function processEnv(key: string): string | undefined {
+  const runtime = globalThis as {process?: {env?: Record<string, string | undefined>}};
+  return runtime.process?.env?.[key];
+}
+
+export const USE_FIREBASE_EMULATOR =
+  trimEnv(processEnv('VITE_USE_FIREBASE_EMULATOR')) === 'true';
 
 export const FIREBASE_EMULATOR = {
   host: '127.0.0.1',
@@ -10,7 +20,17 @@ export const FIREBASE_EMULATOR = {
   firestorePort: 8080,
 };
 
-export const firebaseConfig = USE_FIREBASE_EMULATOR
+type FirebaseWebConfig = {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+  measurementId?: string;
+};
+
+export const firebaseConfig: FirebaseWebConfig = USE_FIREBASE_EMULATOR
   ? {
       apiKey: 'demo-api-key',
       authDomain: 'demo-companycheckin.firebaseapp.com',
@@ -20,16 +40,17 @@ export const firebaseConfig = USE_FIREBASE_EMULATOR
       appId: '1:123456789:web:demo',
     }
   : {
-      apiKey: 'YOUR_API_KEY',
-      authDomain: 'YOUR_PROJECT.firebaseapp.com',
-      projectId: 'YOUR_PROJECT_ID',
-      storageBucket: 'YOUR_PROJECT.appspot.com',
-      messagingSenderId: 'YOUR_SENDER_ID',
-      appId: 'YOUR_APP_ID',
+      apiKey: trimEnv(processEnv('VITE_FIREBASE_API_KEY')),
+      authDomain: trimEnv(processEnv('VITE_FIREBASE_AUTH_DOMAIN')),
+      projectId: trimEnv(processEnv('VITE_FIREBASE_PROJECT_ID')),
+      storageBucket: trimEnv(processEnv('VITE_FIREBASE_STORAGE_BUCKET')),
+      messagingSenderId: trimEnv(processEnv('VITE_FIREBASE_MESSAGING_SENDER_ID')),
+      appId: trimEnv(processEnv('VITE_FIREBASE_APP_ID')),
+      measurementId: trimEnv(processEnv('VITE_FIREBASE_MEASUREMENT_ID')) || undefined,
     };
 
 export const AUTHORIZED_ADMIN_EMAILS: string[] = [
-  // 'admin@your-company.com',
+  'test@gmail.com',
 ];
 
 export function isFirebaseConfigured(): boolean {
@@ -38,9 +59,8 @@ export function isFirebaseConfigured(): boolean {
   }
   return (
     Boolean(firebaseConfig.apiKey) &&
-    !firebaseConfig.apiKey.startsWith('YOUR_') &&
     Boolean(firebaseConfig.projectId) &&
-    !firebaseConfig.projectId.startsWith('YOUR_')
+    Boolean(firebaseConfig.appId)
   );
 }
 

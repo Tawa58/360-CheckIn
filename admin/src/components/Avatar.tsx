@@ -19,7 +19,7 @@ export function Avatar({
     return (
       <img
         src={photoUrl}
-        alt=""
+        alt={name}
         className={`${box} shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-slate-800`}
       />
     );

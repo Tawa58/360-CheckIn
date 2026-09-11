@@ -66,7 +66,7 @@ if (USE_FIREBASE_EMULATOR && auth && db) {
 export function requireFirebase() {
   if (!firebaseReady || !auth || !db) {
     throw new Error(
-      'Firebase is not configured. Add your project keys in shared/firebaseConfig.ts.',
+      'Firebase is not configured. Add your project keys in the repo-root .env file.',
     );
   }
   return {auth, db};

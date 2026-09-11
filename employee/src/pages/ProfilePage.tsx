@@ -1,11 +1,15 @@
-import {useEffect} from 'react';
-import {KeyRound, LogOut} from 'lucide-react';
+import {useEffect, useRef, useState} from 'react';
+import {Camera, KeyRound, Loader2, LogOut} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
 import {Avatar} from '../components/Avatar';
+import {compressProfileImage, saveProfilePhoto} from '../lib/profile';
 import {daysUntil, formatExpiry, isExpired} from '@shared/dates';
 
 export function ProfilePage() {
-  const {employee, logout} = useAuth();
+  const {employee, refreshEmployee, logout} = useAuth();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     document.title = 'Profile · CheckIn360';
@@ -15,8 +19,29 @@ export function ProfilePage() {
     return null;
   }
 
-  const expired = isExpired(employee.codeExpiry);
-  const remaining = daysUntil(employee.codeExpiry);
+  const profile = employee;
+  const expired = isExpired(profile.codeExpiry);
+  const remaining = daysUntil(profile.codeExpiry);
+
+  async function onFile(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const photoUrl = await compressProfileImage(file);
+      await saveProfilePhoto(profile.employeeId, photoUrl);
+      await refreshEmployee();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save that photo.');
+    } finally {
+      setSaving(false);
+      if (inputRef.current) {
+        inputRef.current.value = '';
+      }
+    }
+  }
 
   return (
     <div className="animate-slide-up">
@@ -29,14 +54,39 @@ export function ProfilePage() {
 
       <section className="card mt-6 p-5">
         <div className="flex items-center gap-4">
-          <Avatar name={employee.fullName} photoUrl={employee.photoUrl} size="lg" />
+          <div className="relative shrink-0">
+            <Avatar name={employee.fullName} photoUrl={employee.photoUrl} size="lg" />
+            <button
+              type="button"
+              disabled={saving}
+              aria-label="Upload profile photo"
+              className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-brand-800 text-white shadow-sm ring-2 ring-white dark:ring-slate-900"
+              onClick={() => inputRef.current?.click()}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+            </button>
+          </div>
           <div className="min-w-0">
             <p className="truncate text-2xl font-bold text-slate-900 dark:text-white">
               {employee.fullName}
             </p>
             <p className="mt-1 text-sm text-slate-500">{employee.department}</p>
+            <button
+              type="button"
+              disabled={saving}
+              className="mt-2 text-sm font-semibold text-brand-700 dark:text-brand-300"
+              onClick={() => inputRef.current?.click()}>
+              {employee.photoUrl ? 'Change photo' : 'Upload photo'}
+            </button>
           </div>
         </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={event => onFile(event.target.files?.[0])}
+        />
+        {error ? <p className="mt-3 text-sm text-red-600 dark:text-red-300">{error}</p> : null}
         <dl className="mt-5 space-y-3">
           <div>
             <dt className="text-xs uppercase tracking-wide text-slate-400">Employee ID</dt>

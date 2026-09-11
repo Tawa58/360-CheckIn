@@ -48,6 +48,58 @@ function mapGeolocationError(error: GeolocationPositionError): LocationResult {
   };
 }
 
+const GPS_OPTIONS: PositionOptions = {
+  enableHighAccuracy: true,
+  timeout: 20000,
+  maximumAge: 0,
+};
+
+const WATCH_OPTIONS: PositionOptions = {
+  enableHighAccuracy: true,
+  timeout: 20000,
+  maximumAge: 3000,
+};
+
+function readPosition(position: GeolocationPosition): LocationResult {
+  const {latitude, longitude, accuracy} = position.coords;
+  if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
+    return {
+      ok: false,
+      reason: 'unavailable',
+      message: 'GPS coordinates could not be verified.',
+    };
+  }
+  return {
+    ok: true,
+    location: {
+      latitude,
+      longitude,
+      accuracy: Number.isFinite(accuracy) ? accuracy : null,
+    },
+  };
+}
+
+export function watchVerifiedLocation(
+  onUpdate: (result: LocationResult) => void,
+): () => void {
+  if (!('geolocation' in navigator)) {
+    onUpdate({
+      ok: false,
+      reason: 'unavailable',
+      message: 'This browser does not support GPS location.',
+    });
+    return () => {};
+  }
+
+  const watchId = navigator.geolocation.watchPosition(
+    position => onUpdate(readPosition(position)),
+    error => onUpdate(mapGeolocationError(error)),
+    WATCH_OPTIONS,
+  );
+
+  return () => navigator.geolocation.clearWatch(watchId);
+}
+
 export async function getVerifiedLocation(): Promise<LocationResult> {
   if (!('geolocation' in navigator)) {
     return {
@@ -59,31 +111,9 @@ export async function getVerifiedLocation(): Promise<LocationResult> {
 
   return new Promise(resolve => {
     navigator.geolocation.getCurrentPosition(
-      position => {
-        const {latitude, longitude, accuracy} = position.coords;
-        if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
-          resolve({
-            ok: false,
-            reason: 'unavailable',
-            message: 'GPS coordinates could not be verified.',
-          });
-          return;
-        }
-        resolve({
-          ok: true,
-          location: {
-            latitude,
-            longitude,
-            accuracy: Number.isFinite(accuracy) ? accuracy : null,
-          },
-        });
-      },
+      position => resolve(readPosition(position)),
       error => resolve(mapGeolocationError(error)),
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0,
-      },
+      GPS_OPTIONS,
     );
   });
 }

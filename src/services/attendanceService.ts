@@ -13,6 +13,7 @@ import {
   type Employee,
 } from '../../shared/types';
 import {localISODate, localTime} from '../../shared/dates';
+import {attendanceDocumentId} from '../../shared/docIds';
 import {type VerifiedLocation} from './locationService';
 
 function toAttendance(id: string, data: AttendanceRecord): AttendanceRecord {
@@ -74,14 +75,16 @@ async function saveVerifiedAttendance(
 ): Promise<AttendanceRecord> {
   const {db} = requireFirebase();
   const now = new Date();
-  const attendanceRef = doc(collection(db, COLLECTIONS.attendance));
+  const checkInDate = localISODate(now);
+  const attendanceId = attendanceDocumentId(employee.employeeId, checkInDate);
+  const attendanceRef = doc(db, COLLECTIONS.attendance, attendanceId);
   const attendance: AttendanceRecord = {
-    attendanceId: attendanceRef.id,
+    attendanceId,
     employeeId: employee.employeeId,
     employeeUid: employee.authUid,
     fullName: employee.fullName,
     department: employee.department,
-    checkInDate: localISODate(now),
+    checkInDate,
     checkInTime: localTime(now),
     latitude: location.latitude,
     longitude: location.longitude,

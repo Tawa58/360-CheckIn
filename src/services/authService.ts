@@ -5,7 +5,7 @@ import {
   type User,
   type Unsubscribe,
 } from 'firebase/auth';
-import {doc, getDoc} from 'firebase/firestore';
+import {collection, getDocs, query, where} from 'firebase/firestore';
 import {requireFirebase} from '../config/firebase';
 import {employeeAuthEmail} from '../../shared/firebaseConfig';
 import {COLLECTIONS, type Employee} from '../../shared/types';
@@ -38,11 +38,14 @@ export function mapAuthError(error: unknown): string {
 
 export async function fetchEmployeeProfile(uid: string): Promise<Employee> {
   const {db} = requireFirebase();
-  const snapshot = await getDoc(doc(db, COLLECTIONS.employees, uid));
-  if (!snapshot.exists()) {
+  const snapshot = await getDocs(
+    query(collection(db, COLLECTIONS.employees), where('authUid', '==', uid)),
+  );
+  const employee = snapshot.docs[0]?.data() as Employee | undefined;
+  if (!employee) {
     throw new Error('This account is not registered as an employee.');
   }
-  return snapshot.data() as Employee;
+  return employee;
 }
 
 export async function loginEmployee(

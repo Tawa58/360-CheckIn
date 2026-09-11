@@ -10,31 +10,31 @@ import {
 import {initializeApp, getApps} from 'firebase/app';
 import {
   collection,
-  connectFirestoreEmulator,
   doc,
   getDoc,
   getDocs,
-  getFirestore,
   setDoc,
 } from 'firebase/firestore';
 import {
   AUTHORIZED_ADMIN_EMAILS,
   EMPLOYEE_AUTH_DOMAIN,
+} from '@shared/firebaseConfig';
+import {COLLECTIONS, type AdminProfile} from '@shared/types';
+import {adminDocumentId} from '@shared/docIds';
+import {
   FIREBASE_EMULATOR,
   USE_FIREBASE_EMULATOR,
   firebaseConfig,
-} from '@shared/firebaseConfig';
-import {COLLECTIONS, type AdminProfile} from '@shared/types';
-import {requireFirebase} from './firebase';
+  requireFirebase,
+} from '../config/firebase';
 
 function assertAdminEmail(email: string) {
-  if (email.toLowerCase().endsWith(`@${EMPLOYEE_AUTH_DOMAIN}`)) {
+  const normalized = email.trim().toLowerCase();
+  if (normalized.endsWith(`@${EMPLOYEE_AUTH_DOMAIN}`)) {
     throw new Error('Employee accounts cannot access the admin dashboard.');
   }
-  if (
-    AUTHORIZED_ADMIN_EMAILS.length > 0 &&
-    !AUTHORIZED_ADMIN_EMAILS.includes(email)
-  ) {
+  const allowlist = AUTHORIZED_ADMIN_EMAILS.map(item => item.trim().toLowerCase());
+  if (allowlist.length === 0 || !allowlist.includes(normalized)) {
     throw new Error('This account is not authorized for the admin dashboard.');
   }
 }
@@ -43,7 +43,7 @@ export async function ensureAdminProfile(user: User): Promise<AdminProfile> {
   const {db} = requireFirebase();
   const email = user.email ?? '';
   assertAdminEmail(email);
-  const ref = doc(db, COLLECTIONS.admins, user.uid);
+  const ref = doc(db, COLLECTIONS.admins, adminDocumentId(email));
   const snapshot = await getDoc(ref);
   if (snapshot.exists()) {
     return snapshot.data() as AdminProfile;
@@ -58,14 +58,37 @@ export async function ensureAdminProfile(user: User): Promise<AdminProfile> {
   return profile;
 }
 
+function mapAdminAuthError(error: unknown): Error {
+  if (error instanceof Error && error.message && !error.message.startsWith('Firebase:')) {
+    return error;
+  }
+  const code =
+    typeof error === 'object' && error && 'code' in error
+      ? String((error as {code?: string}).code)
+      : '';
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-email':
+      return new Error('Invalid email or password.');
+    case 'auth/too-many-requests':
+      return new Error('Too many attempts. Please wait and try again.');
+    case 'auth/network-request-failed':
+      return new Error('Network error. Check your connection and try again.');
+    default:
+      return error instanceof Error ? error : new Error('Unable to sign in.');
+  }
+}
+
 export async function loginAdmin(email: string, password: string) {
   const {auth} = requireFirebase();
-  const credential = await signInWithEmailAndPassword(auth, email, password);
   try {
+    const credential = await signInWithEmailAndPassword(auth, email, password);
     await ensureAdminProfile(credential.user);
   } catch (error) {
-    await signOut(auth);
-    throw error;
+    await signOut(auth).catch(() => undefined);
+    throw mapAdminAuthError(error);
   }
 }
 
@@ -80,11 +103,11 @@ export async function createAdminAccount(
     throw new Error('Password must be at least 6 characters.');
   }
 
+  const {db} = requireFirebase();
   const secondary =
     getApps().find(app => app.name === 'Secondary') ??
     initializeApp(firebaseConfig, 'Secondary');
   const secondaryAuth = getAuth(secondary);
-  const secondaryDb = getFirestore(secondary);
   if (USE_FIREBASE_EMULATOR) {
     try {
       connectAuthEmulator(
@@ -94,15 +117,6 @@ export async function createAdminAccount(
       );
     } catch {
       // Secondary auth already pointed at the emulator.
-    }
-    try {
-      connectFirestoreEmulator(
-        secondaryDb,
-        FIREBASE_EMULATOR.host,
-        FIREBASE_EMULATOR.firestorePort,
-      );
-    } catch {
-      // Already connected.
     }
   }
 
@@ -118,7 +132,7 @@ export async function createAdminAccount(
     createdAt: new Date().toISOString(),
   };
   try {
-    await setDoc(doc(secondaryDb, COLLECTIONS.admins, profile.uid), profile);
+    await setDoc(doc(db, COLLECTIONS.admins, adminDocumentId(trimmedEmail)), profile);
   } finally {
     await signOut(secondaryAuth);
   }

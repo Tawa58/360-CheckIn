@@ -63,8 +63,7 @@ export function LoginPage() {
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <p>
                   Add your Firebase web credentials in{' '}
-                  <code className="font-mono text-xs">shared/firebaseConfig.ts</code> before using
-                  the dashboard.
+                  <code className="font-mono text-xs">.env</code> before using the dashboard.
                 </p>
               </div>
             ) : null}

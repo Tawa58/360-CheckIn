@@ -12,6 +12,8 @@ import {listAttendance} from '../lib/attendance';
 import {listEmployees} from '../lib/employees';
 import type {AttendanceRecord, Employee} from '@shared/types';
 import {formatDisplayDate, localISODate} from '@shared/dates';
+import {matchesEmployeeQuery} from '@shared/employeeSearch';
+import {EmployeeSearch} from '../components/EmployeeSearch';
 
 export function AttendancePage() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -19,6 +21,8 @@ export function AttendancePage() {
   const [date, setDate] = useState(localISODate());
   const [department, setDepartment] = useState('');
   const [status, setStatus] = useState('');
+  const [employeeQuery, setEmployeeQuery] = useState('');
+  const [employeeUid, setEmployeeUid] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +44,20 @@ export function AttendancePage() {
     [employees],
   );
 
+  const matchingEmployeeUids = useMemo(() => {
+    if (employeeUid) {
+      return new Set([employeeUid]);
+    }
+    if (!employeeQuery.trim()) {
+      return null;
+    }
+    return new Set(
+      employees
+        .filter(employee => matchesEmployeeQuery(employee, employeeQuery))
+        .map(employee => employee.authUid),
+    );
+  }, [employeeQuery, employeeUid, employees]);
+
   const filtered = useMemo(
     () =>
       records.filter(record => {
@@ -52,9 +70,12 @@ export function AttendancePage() {
         if (status && record.locationStatus !== status) {
           return false;
         }
+        if (matchingEmployeeUids && !matchingEmployeeUids.has(record.employeeUid)) {
+          return false;
+        }
         return true;
       }),
-    [date, department, records, status],
+    [date, department, matchingEmployeeUids, records, status],
   );
 
   const missing = useMemo(() => {
@@ -69,9 +90,10 @@ export function AttendancePage() {
     return employees.filter(
       employee =>
         (!department || employee.department === department) &&
+        (!matchingEmployeeUids || matchingEmployeeUids.has(employee.authUid)) &&
         !present.has(employee.authUid),
     );
-  }, [date, department, employees, records]);
+  }, [date, department, employees, matchingEmployeeUids, records]);
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -98,7 +120,7 @@ export function AttendancePage() {
           <Filter className="h-4 w-4 text-slate-400 dark:text-slate-500" />
           Filters
         </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <label className="block">
             <span className="field-label">Date</span>
             <input
@@ -108,6 +130,27 @@ export function AttendancePage() {
               onChange={event => setDate(event.target.value)}
             />
           </label>
+          <EmployeeSearch
+            employees={employees}
+            query={employeeQuery}
+            selectedUid={employeeUid}
+            onQueryChange={value => {
+              setEmployeeQuery(value);
+              const selected = employees.find(employee => employee.authUid === employeeUid);
+              if (selected && matchesEmployeeQuery(selected, value)) {
+                return;
+              }
+              setEmployeeUid('');
+            }}
+            onSelect={employee => {
+              setEmployeeUid(employee.authUid);
+              setEmployeeQuery(employee.fullName);
+            }}
+            onClear={() => {
+              setEmployeeUid('');
+              setEmployeeQuery('');
+            }}
+          />
           <label className="block">
             <span className="field-label">Department</span>
             <select

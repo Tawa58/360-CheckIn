@@ -1,16 +1,33 @@
 import {useCallback, useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
-import {CalendarCheck, Clock, Loader2, MapPin, RefreshCw, ShieldAlert, ShieldCheck} from 'lucide-react';
+import {
+  CalendarCheck,
+  ChevronRight,
+  Clock,
+  Loader2,
+  MapPin,
+  MapPinOff,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+  Signal,
+} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
 import {getTodayAttendance, submitCheckIn} from '../lib/attendance';
-import {getVerifiedLocation, type LocationResult} from '../lib/location';
+import {useGeofenceMonitor} from '../lib/useGeofenceMonitor';
+import {GeofencePanel} from '../components/GeofencePanel';
 import type {AttendanceRecord} from '@shared/types';
 import {formatDisplayDate, localISODate} from '@shared/dates';
 
+function formatCoords(latitude: number, longitude: number): string {
+  const eastWest = longitude >= 0 ? 'E' : 'W';
+  return `${latitude.toFixed(5)}, ${Math.abs(longitude).toFixed(5)}${eastWest}`;
+}
+
 export function CheckInPage() {
   const {employee} = useAuth();
-  const [gps, setGps] = useState<LocationResult | null>(null);
-  const [gpsLoading, setGpsLoading] = useState(false);
+  const geofence = useGeofenceMonitor(employee);
+  const {gps, gpsLoading, refreshGps} = geofence;
   const [submitting, setSubmitting] = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
   const [message, setMessage] = useState('');
@@ -19,15 +36,7 @@ export function CheckInPage() {
   const firstName = employee?.fullName.split(' ')[0] ?? 'there';
   const gpsReady = gps?.ok === true;
   const alreadyCheckedIn = Boolean(todayRecord);
-
-  const refreshGps = useCallback(async () => {
-    setGpsLoading(true);
-    setError('');
-    const result = await getVerifiedLocation();
-    setGps(result);
-    setGpsLoading(false);
-    return result;
-  }, []);
+  const outside = geofence.zone === 'outside';
 
   const loadToday = useCallback(async () => {
     if (!employee) {
@@ -80,21 +89,24 @@ export function CheckInPage() {
       </p>
 
       <section
-        className={`card mt-6 p-5 ${
+        className={`card relative mt-6 p-5 ${
           gpsReady
             ? 'border-emerald-200 dark:border-emerald-500/30'
             : 'border-amber-200 dark:border-amber-500/30'
         }`}>
+        {gpsReady ? (
+          <Signal className="absolute right-4 top-4 h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+        ) : null}
         <div className="flex items-start gap-3">
           <span
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
               gpsReady
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                ? 'bg-emerald-500 text-white'
                 : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
             }`}>
             {gpsReady ? <ShieldCheck className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 pr-8">
             <p className="text-sm font-semibold text-slate-900 dark:text-white">
               {gpsReady ? 'GPS verified' : 'GPS required'}
             </p>
@@ -102,7 +114,7 @@ export function CheckInPage() {
               {gpsLoading
                 ? 'Requesting GPS location…'
                 : gpsReady
-                  ? `Location verified · ${gps.location.latitude.toFixed(5)}, ${gps.location.longitude.toFixed(5)}`
+                  ? `Location verified · ${formatCoords(gps.location.latitude, gps.location.longitude)}`
                   : gps
                     ? gps.message
                     : 'GPS has not been verified yet.'}
@@ -116,31 +128,98 @@ export function CheckInPage() {
       </section>
 
       {alreadyCheckedIn && todayRecord ? (
-        <section className="card mt-5 p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Today’s check-in</h2>
-            <span className="badge bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-              {todayRecord.locationStatus}
-            </span>
+        <Link
+          to="/history"
+          className="card mt-5 flex items-center gap-3 p-5 transition hover:bg-slate-50 dark:hover:bg-slate-800/60">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">Today’s check-in</h2>
+              <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />
+            </div>
+            <p className="mt-3 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <Clock className="h-4 w-4" />
+              {todayRecord.checkInTime}
+            </p>
+            <p className="mt-1 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <MapPin className="h-4 w-4" />
+              {formatCoords(todayRecord.latitude, todayRecord.longitude)}
+            </p>
+            <div
+              className={`mt-3 flex items-start gap-2 rounded-2xl px-3 py-2.5 ${
+                geofence.zone === null
+                  ? 'bg-slate-50 dark:bg-slate-800/80'
+                  : outside
+                    ? 'bg-rose-50 dark:bg-rose-500/10'
+                    : 'bg-emerald-50 dark:bg-emerald-500/10'
+              }`}>
+              {outside ? (
+                <MapPinOff className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-300" />
+              ) : (
+                <MapPin
+                  className={`mt-0.5 h-4 w-4 shrink-0 ${
+                    geofence.zone === null
+                      ? 'text-slate-400'
+                      : 'text-emerald-600 dark:text-emerald-300'
+                  }`}
+                />
+              )}
+              <div className="min-w-0">
+                <p
+                  className={`text-[10px] font-bold uppercase tracking-[0.12em] ${
+                    geofence.zone === null
+                      ? 'text-slate-400'
+                      : outside
+                        ? 'text-rose-700 dark:text-rose-300'
+                        : 'text-emerald-700 dark:text-emerald-300'
+                  }`}>
+                  {geofence.zone === null
+                    ? 'Waiting for GPS'
+                    : outside
+                      ? 'Outside company premises'
+                      : 'Inside company premises'}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                  {geofence.zone === null
+                    ? 'Live location is needed to confirm the boundary.'
+                    : outside
+                      ? 'You are outside the geofence boundary.'
+                      : 'You are inside the geofence boundary.'}
+                </p>
+              </div>
+            </div>
           </div>
-          <p className="mt-3 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            <Clock className="h-4 w-4" />
-            {todayRecord.checkInTime}
-          </p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {todayRecord.latitude.toFixed(6)}, {todayRecord.longitude.toFixed(6)}
-          </p>
-        </section>
-      ) : null}
+        </Link>
+      ) : (
+        <button
+          type="button"
+          className="btn-primary mt-5 w-full"
+          disabled={!gpsReady || gpsLoading || submitting}
+          onClick={onCheckIn}>
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
+          {gpsReady ? 'Check in now' : 'Check-in blocked'}
+        </button>
+      )}
 
-      <button
-        type="button"
-        className="btn-primary mt-5 w-full"
-        disabled={!gpsReady || alreadyCheckedIn || gpsLoading || submitting}
-        onClick={onCheckIn}>
-        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
-        {alreadyCheckedIn ? 'Already checked in' : gpsReady ? 'Check in now' : 'Check-in blocked'}
-      </button>
+      <GeofencePanel
+        site={geofence.site}
+        location={gps?.ok ? gps.location : null}
+        gpsMessage={gps && !gps.ok ? gps.message : undefined}
+        reading={geofence.reading}
+        zone={geofence.zone}
+        openEvent={geofence.openEvent}
+        lastClosed={geofence.lastClosed}
+        todayEvents={geofence.todayEvents}
+        secondsOutside={geofence.secondsOutside}
+        reasonSaving={geofence.reasonSaving}
+        reasonError={geofence.reasonError}
+        checkInTime={todayRecord?.checkInTime}
+        checkInCreatedAt={todayRecord?.createdAt}
+        onSubmitReason={geofence.submitReason}
+      />
+
+      {geofence.syncError ? (
+        <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">{geofence.syncError}</p>
+      ) : null}
 
       {!gpsReady && !alreadyCheckedIn ? (
         <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">

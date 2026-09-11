@@ -5,11 +5,10 @@ import {
   FileSpreadsheet,
   FileText,
   Loader2,
-  Search,
   Users,
-  X,
 } from 'lucide-react';
 import {listAttendance} from '../lib/attendance';
+import {listBoundaryEvents} from '../lib/boundaryEvents';
 import {listEmployees} from '../lib/employees';
 import {
   buildMonthlyReport,
@@ -17,7 +16,16 @@ import {
   type MonthlyAttendanceReport,
 } from '../lib/monthlyReport';
 import {exportMonthlyExcel, exportMonthlyPdf} from '../lib/reportExport';
-import type {AttendanceRecord, Employee} from '@shared/types';
+import type {AttendanceRecord, BoundaryEvent, Employee} from '@shared/types';
+import {
+  buildPremisesReport,
+  premisesSummaryLine,
+} from '@shared/premisesReport';
+import {formatDisplayDate} from '@shared/dates';
+import {formatDurationHuman, formatMeters} from '@shared/geofence';
+import {matchesEmployeeQuery} from '@shared/employeeSearch';
+import {EmployeeSearch} from '../components/EmployeeSearch';
+import {Avatar} from '../components/Avatar';
 
 function statusClass(status: string) {
   if (status === 'Present') {
@@ -32,11 +40,11 @@ function statusClass(status: string) {
 export function ReportsPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [boundaryEvents, setBoundaryEvents] = useState<BoundaryEvent[]>([]);
   const [month, setMonth] = useState(currentMonthValue());
   const [scope, setScope] = useState<'everyone' | 'individual'>('everyone');
   const [nameQuery, setNameQuery] = useState('');
   const [employeeUid, setEmployeeUid] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [error, setError] = useState('');
   const [exportError, setExportError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -44,30 +52,21 @@ export function ReportsPage() {
 
   useEffect(() => {
     document.title = 'Reports · CheckIn360';
-    Promise.all([listEmployees(), listAttendance()])
-      .then(([nextEmployees, nextRecords]) => {
+    Promise.all([
+      listEmployees(),
+      listAttendance(),
+      listBoundaryEvents().catch(() => [] as BoundaryEvent[]),
+    ])
+      .then(([nextEmployees, nextRecords, nextEvents]) => {
         setEmployees(nextEmployees);
         setRecords(nextRecords);
+        setBoundaryEvents(nextEvents);
       })
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Unable to load report data.');
       })
       .finally(() => setLoading(false));
   }, []);
-
-  const matches = useMemo(() => {
-    const value = nameQuery.trim().toLowerCase();
-    const pool = value
-      ? employees.filter(employee => {
-          return (
-            employee.fullName.toLowerCase().includes(value) ||
-            employee.employeeId.toLowerCase().includes(value) ||
-            employee.department.toLowerCase().includes(value)
-          );
-        })
-      : employees;
-    return pool.slice(0, 8);
-  }, [employees, nameQuery]);
 
   const selectedEmployee = employees.find(employee => employee.authUid === employeeUid);
 
@@ -86,16 +85,59 @@ export function ReportsPage() {
     });
   }, [employeeUid, employees, error, loading, month, records, scope]);
 
+  const premises = useMemo(() => {
+    if (loading || error) {
+      return null;
+    }
+    if (scope === 'individual' && !employeeUid) {
+      return null;
+    }
+    return buildPremisesReport(
+      boundaryEvents,
+      records,
+      month,
+      scope === 'individual' ? employeeUid : undefined,
+    );
+  }, [boundaryEvents, employeeUid, error, loading, month, records, scope]);
+
+  const individual = report?.scope === 'individual' ? report.rows[0] : undefined;
+
+  const checkInsByDate = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    if (!employeeUid) {
+      return map;
+    }
+    for (const record of records) {
+      if (record.employeeUid !== employeeUid) {
+        continue;
+      }
+      const previous = map.get(record.checkInDate);
+      if (!previous || record.createdAt > previous.createdAt) {
+        map.set(record.checkInDate, record);
+      }
+    }
+    return map;
+  }, [employeeUid, records]);
+
   function selectEmployee(employee: Employee) {
+    setScope('individual');
     setEmployeeUid(employee.authUid);
     setNameQuery(employee.fullName);
-    setSearchOpen(false);
   }
 
   function clearEmployee() {
     setEmployeeUid('');
     setNameQuery('');
-    setSearchOpen(true);
+    setScope('everyone');
+  }
+
+  function onQueryChange(value: string) {
+    setNameQuery(value);
+    const selected = employees.find(employee => employee.authUid === employeeUid);
+    if (selected && matchesEmployeeQuery(selected, value)) {
+      return;
+    }
+    setEmployeeUid('');
   }
 
   function runExport(kind: 'pdf' | 'xlsx') {
@@ -106,9 +148,9 @@ export function ReportsPage() {
     setExporting(kind);
     try {
       if (kind === 'pdf') {
-        exportMonthlyPdf(report);
+        exportMonthlyPdf(report, premises ?? undefined);
       } else {
-        exportMonthlyExcel(report);
+        exportMonthlyExcel(report, premises ?? undefined);
       }
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Unable to generate the report.');
@@ -117,8 +159,6 @@ export function ReportsPage() {
     }
   }
 
-  const individual = report?.scope === 'individual' ? report.rows[0] : undefined;
-
   return (
     <div className="mx-auto w-full max-w-6xl animate-slide-up">
       <header>
@@ -126,7 +166,8 @@ export function ReportsPage() {
           Reports
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 sm:text-base">
-          Monthly attendance as PDF or Excel, for everyone or one employee.
+          Monthly attendance for everyone, or search one employee for department, present and
+          absent days, and daily check-ins.
         </p>
       </header>
 
@@ -164,93 +205,22 @@ export function ReportsPage() {
                 const next = event.target.value === 'individual' ? 'individual' : 'everyone';
                 setScope(next);
                 if (next === 'everyone') {
-                  setSearchOpen(false);
-                } else {
-                  setSearchOpen(true);
+                  setEmployeeUid('');
+                  setNameQuery('');
                 }
               }}>
               <option value="everyone">Everyone</option>
               <option value="individual">Individual</option>
             </select>
           </label>
-          <div
-            className="relative block"
-            onBlur={event => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                setSearchOpen(false);
-              }
-            }}>
-            <span className="field-label">Employee</span>
-            <div className="relative mt-1.5">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <input
-                type="search"
-                className="field-input pl-11 pr-11"
-                placeholder="Search by name"
-                value={nameQuery}
-                disabled={scope !== 'individual'}
-                autoComplete="off"
-                aria-autocomplete="list"
-                aria-expanded={scope === 'individual' && searchOpen}
-                onFocus={() => {
-                  if (scope === 'individual') {
-                    setSearchOpen(true);
-                  }
-                }}
-                onChange={event => {
-                  setNameQuery(event.target.value);
-                  setEmployeeUid('');
-                  setSearchOpen(true);
-                }}
-                onKeyDown={event => {
-                  if (event.key === 'Enter' && matches.length === 1) {
-                    event.preventDefault();
-                    selectEmployee(matches[0]);
-                  }
-                  if (event.key === 'Escape') {
-                    setSearchOpen(false);
-                  }
-                }}
-              />
-              {scope === 'individual' && nameQuery ? (
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                  aria-label="Clear employee"
-                  onClick={clearEmployee}>
-                  <X className="h-4 w-4" />
-                </button>
-              ) : null}
-            </div>
-            {scope === 'individual' && searchOpen ? (
-              <ul
-                role="listbox"
-                className="absolute z-20 mt-2 max-h-64 w-full overflow-auto rounded-2xl border border-slate-200 bg-white py-1 shadow-card dark:border-slate-700 dark:bg-slate-900">
-                {matches.length === 0 ? (
-                  <li className="px-4 py-3 text-sm text-slate-500">No employees match that name.</li>
-                ) : (
-                  matches.map(employee => (
-                    <li key={employee.authUid}>
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={employee.authUid === employeeUid}
-                        className="flex w-full flex-col items-start px-4 py-2.5 text-left hover:bg-brand-50 dark:hover:bg-slate-800"
-                        onMouseDown={event => event.preventDefault()}
-                        onClick={() => selectEmployee(employee)}>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white">
-                          {employee.fullName}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {employee.employeeId} · {employee.department}
-                        </span>
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            ) : null}
-          </div>
+          <EmployeeSearch
+            employees={employees}
+            query={nameQuery}
+            selectedUid={employeeUid}
+            onQueryChange={onQueryChange}
+            onSelect={selectEmployee}
+            onClear={clearEmployee}
+          />
         </div>
         <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
           Counts weekdays only. Future days in the current month are left out, so they are not
@@ -296,8 +266,57 @@ export function ReportsPage() {
 
       {!loading && scope === 'individual' && !selectedEmployee ? (
         <p className="mt-8 text-sm text-slate-500 dark:text-slate-400">
-          Search an employee by name to preview and download their report.
+          Search by name, username, employee ID, or department. Press Enter when there is one match.
         </p>
+      ) : null}
+
+      {selectedEmployee && individual ? (
+        <section className="card mt-6 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <Avatar name={selectedEmployee.fullName} photoUrl={selectedEmployee.photoUrl} />
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  {selectedEmployee.fullName}
+                </h2>
+                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                  {selectedEmployee.employeeId} · {selectedEmployee.department}
+                </p>
+                <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
+                  @{selectedEmployee.username}
+                  {selectedEmployee.email ? ` · ${selectedEmployee.email}` : ''}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{report?.monthLabel}</p>
+          </div>
+          <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl bg-slate-50 px-3 py-3 dark:bg-slate-800/80">
+              <dt className="text-xs text-slate-400">Present</dt>
+              <dd className="mt-1 text-xl font-semibold text-emerald-700 dark:text-emerald-300">
+                {individual.presentDays}
+              </dd>
+            </div>
+            <div className="rounded-2xl bg-slate-50 px-3 py-3 dark:bg-slate-800/80">
+              <dt className="text-xs text-slate-400">Absent</dt>
+              <dd className="mt-1 text-xl font-semibold text-rose-700 dark:text-rose-300">
+                {individual.absentDays}
+              </dd>
+            </div>
+            <div className="rounded-2xl bg-slate-50 px-3 py-3 dark:bg-slate-800/80">
+              <dt className="text-xs text-slate-400">Rejected</dt>
+              <dd className="mt-1 text-xl font-semibold text-amber-700 dark:text-amber-300">
+                {individual.rejectedDays}
+              </dd>
+            </div>
+            <div className="rounded-2xl bg-slate-50 px-3 py-3 dark:bg-slate-800/80">
+              <dt className="text-xs text-slate-400">Attendance</dt>
+              <dd className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">
+                {individual.attendanceRate}%
+              </dd>
+            </div>
+          </dl>
+        </section>
       ) : null}
 
       {report ? (
@@ -431,19 +450,92 @@ export function ReportsPage() {
                 </h2>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {individual.days.map(day => (
+                {individual.days.map(day => {
+                  const checkIn = checkInsByDate.get(day.date);
+                  return (
                   <div
                     key={day.date}
                     className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900 dark:text-white">
                         {day.weekday} {day.date}
                       </p>
+                      {checkIn ? (
+                        <p className="mt-0.5 truncate text-xs text-slate-400">
+                          {checkIn.checkInTime}
+                          {' · '}
+                          {checkIn.latitude.toFixed(5)}, {checkIn.longitude.toFixed(5)}
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-xs text-slate-400">No check-in recorded</p>
+                      )}
                     </div>
                     <span className={`badge ${statusClass(day.status)}`}>{day.status}</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
+            </section>
+          ) : null}
+
+          {premises ? (
+            <section className="card mt-6 overflow-hidden">
+              <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+                  Premises exits
+                </h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {premisesSummaryLine(premises)}
+                </p>
+              </div>
+              {premises.rows.length === 0 ? (
+                <p className="px-4 py-8 text-sm text-slate-500 sm:px-5">
+                  No geofence exits were recorded this month.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
+                      <tr>
+                        <th className="px-5 py-3 font-medium">Employee</th>
+                        <th className="px-5 py-3 font-medium">Date</th>
+                        <th className="px-5 py-3 font-medium">Check-in</th>
+                        <th className="px-5 py-3 font-medium">Exit</th>
+                        <th className="px-5 py-3 font-medium">Return</th>
+                        <th className="px-5 py-3 font-medium">Time outside</th>
+                        <th className="px-5 py-3 font-medium">Distance</th>
+                        <th className="px-5 py-3 font-medium">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {premises.rows.map(row => (
+                        <tr key={row.eventId}>
+                          <td className="px-5 py-3">
+                            <p className="font-medium text-slate-900 dark:text-white">{row.fullName}</p>
+                            <p className="text-xs text-slate-400">{row.employeeId}</p>
+                          </td>
+                          <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
+                            {formatDisplayDate(row.date)}
+                          </td>
+                          <td className="px-5 py-3 tabular-nums">{row.checkInTime ?? '—'}</td>
+                          <td className="px-5 py-3 tabular-nums">{row.exitClock}</td>
+                          <td className="px-5 py-3 tabular-nums">
+                            {row.open ? 'Still out' : row.returnClock ?? '—'}
+                          </td>
+                          <td className="px-5 py-3">{formatDurationHuman(row.durationOutside)}</td>
+                          <td className="px-5 py-3">
+                            <p>{formatMeters(row.distanceFromCentre)} from centre</p>
+                            <p className="text-xs text-slate-400">
+                              {formatMeters(row.distanceFromBoundary)} from boundary
+                            </p>
+                          </td>
+                          <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{row.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
           ) : null}
         </>

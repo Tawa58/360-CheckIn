@@ -1,8 +1,10 @@
 import {useEffect, useState, type FormEvent} from 'react';
-import {AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, Moon, Sun, UserRound} from 'lucide-react';
+import {AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Moon, Sun, UserRound} from 'lucide-react';
 import {ThemeToggle} from '../components/ThemeToggle';
 import {createAdminAccount, listAdmins} from '../lib/adminAuth';
-import type {AdminProfile} from '@shared/types';
+import {loadGeofenceSite, saveGeofenceSite} from '../lib/geofenceSite';
+import type {AdminProfile, GeofenceSite} from '@shared/types';
+import {geofenceFromEnv} from '@shared/geofence';
 
 export function SettingsPage() {
   const [admins, setAdmins] = useState<AdminProfile[]>([]);
@@ -14,6 +16,10 @@ export function SettingsPage() {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [geofence, setGeofence] = useState<GeofenceSite>(geofenceFromEnv());
+  const [geofenceSaving, setGeofenceSaving] = useState(false);
+  const [geofenceNotice, setGeofenceNotice] = useState('');
+  const [geofenceError, setGeofenceError] = useState('');
 
   async function refreshAdmins() {
     setAdmins(await listAdmins());
@@ -21,7 +27,10 @@ export function SettingsPage() {
 
   useEffect(() => {
     document.title = 'Settings · CheckIn360';
-    refreshAdmins()
+    Promise.all([refreshAdmins(), loadGeofenceSite()])
+      .then(([, site]) => {
+        setGeofence(site);
+      })
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Unable to load administrators.');
       })
@@ -45,6 +54,43 @@ export function SettingsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function onSaveGeofence(event: FormEvent) {
+    event.preventDefault();
+    setGeofenceError('');
+    setGeofenceNotice('');
+    setGeofenceSaving(true);
+    try {
+      const saved = await saveGeofenceSite(geofence);
+      setGeofence(saved);
+      setGeofenceNotice(`Saved ${saved.name} · ${saved.radiusMeters} m radius.`);
+    } catch (err) {
+      setGeofenceError(err instanceof Error ? err.message : 'Unable to save the geofence.');
+    } finally {
+      setGeofenceSaving(false);
+    }
+  }
+
+  function useBrowserLocation() {
+    if (!('geolocation' in navigator)) {
+      setGeofenceError('This browser cannot read GPS.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        setGeofence(current => ({
+          ...current,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        }));
+        setGeofenceError('');
+      },
+      () => {
+        setGeofenceError('Unable to read this device’s location.');
+      },
+      {enableHighAccuracy: true, timeout: 20000, maximumAge: 0},
+    );
   }
 
   return (
@@ -81,6 +127,82 @@ export function SettingsPage() {
       </section>
 
       <section className="card mt-5 p-5 sm:p-6">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white">Company geofence</h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Employees see this boundary on the check-in map. Green means inside, red means outside.
+        </p>
+        <form onSubmit={onSaveGeofence} className="mt-5 space-y-4">
+          <label className="block">
+            <span className="field-label">Site name</span>
+            <input
+              className="field-input mt-1.5"
+              value={geofence.name}
+              onChange={event => setGeofence(current => ({...current, name: event.target.value}))}
+            />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="field-label">Latitude</span>
+              <input
+                className="field-input mt-1.5"
+                inputMode="decimal"
+                value={geofence.latitude}
+                onChange={event =>
+                  setGeofence(current => ({...current, latitude: Number(event.target.value)}))
+                }
+              />
+            </label>
+            <label className="block">
+              <span className="field-label">Longitude</span>
+              <input
+                className="field-input mt-1.5"
+                inputMode="decimal"
+                value={geofence.longitude}
+                onChange={event =>
+                  setGeofence(current => ({...current, longitude: Number(event.target.value)}))
+                }
+              />
+            </label>
+          </div>
+          <label className="block">
+            <span className="field-label">Radius (metres)</span>
+            <input
+              className="field-input mt-1.5"
+              inputMode="numeric"
+              min={10}
+              value={geofence.radiusMeters}
+              onChange={event =>
+                setGeofence(current => ({...current, radiusMeters: Number(event.target.value)}))
+              }
+            />
+          </label>
+          {geofenceNotice ? (
+            <div className="flex gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800 ring-1 ring-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-500/30">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+              <p>{geofenceNotice}</p>
+            </div>
+          ) : null}
+          {geofenceError ? (
+            <div
+              role="alert"
+              className="flex gap-3 rounded-2xl bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/30">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <p>{geofenceError}</p>
+            </div>
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button type="submit" disabled={geofenceSaving} className="btn-primary">
+              {geofenceSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+              {geofenceSaving ? 'Saving…' : 'Save geofence'}
+            </button>
+            <button type="button" className="btn-outline" onClick={useBrowserLocation}>
+              Use my current location
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="card mt-5 p-5 sm:p-6">
         <h2 className="text-base font-semibold text-slate-900 dark:text-white">Administrators</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Create another admin from here. They will sign in on the login page with their own email.
@@ -110,7 +232,7 @@ export function SettingsPage() {
               <UserRound className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
                 className="field-input pl-11"
-                placeholder="Alex Morgan"
+                placeholder="msekiwa"
                 autoComplete="name"
                 value={displayName}
                 onChange={event => setDisplayName(event.target.value)}

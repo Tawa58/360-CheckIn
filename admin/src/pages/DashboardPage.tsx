@@ -15,6 +15,7 @@ import {listAttendance} from '../lib/attendance';
 import {listEmployeeMessages} from '../lib/messages';
 import type {AttendanceRecord, Employee, EmployeeMessage} from '@shared/types';
 import {formatDisplayDate, isExpired, localISODate} from '@shared/dates';
+import {Avatar} from '../components/Avatar';
 
 const tones = {
   brand: 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300',
@@ -23,15 +24,6 @@ const tones = {
   amber: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
   rose: 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
 } as const;
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0]?.toUpperCase() ?? '')
-    .join('');
-}
 
 export function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -118,7 +110,14 @@ export function DashboardPage() {
     },
   ];
 
-  const recent = attendance.slice(0, 5);
+  const recent = attendance.slice(0, 8);
+  const photoByUid = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    for (const employee of employees) {
+      map.set(employee.authUid, employee.photoUrl);
+    }
+    return map;
+  }, [employees]);
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -140,27 +139,29 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
         {loading
           ? Array.from({length: 6}).map((_, index) => (
               <div
                 key={index}
-                className="card h-[116px] animate-pulse bg-white/70 dark:bg-slate-900/70"
+                className="card h-[72px] animate-pulse bg-white/70 dark:bg-slate-900/70 sm:h-[116px]"
               />
             ))
           : cards.map(card => (
               <Link
                 key={card.label}
                 to={card.to}
-                className="card group p-4 transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg dark:hover:border-brand-500/40 sm:p-5">
-                <span
-                  className={`flex h-10 w-10 items-center justify-center rounded-2xl ${card.tone}`}>
-                  <card.icon className="h-5 w-5" />
-                </span>
-                <p className="mt-3 text-3xl font-bold tabular-nums text-brand-900 dark:text-brand-200">
-                  {card.value}
-                </p>
-                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                className="card group p-3 transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg dark:hover:border-brand-500/40 sm:p-5">
+                <div className="flex items-center gap-2.5 sm:block">
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 sm:rounded-2xl ${card.tone}`}>
+                    <card.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </span>
+                  <p className="text-xl font-bold tabular-nums text-brand-900 dark:text-brand-200 sm:mt-3 sm:text-3xl">
+                    {card.value}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs leading-snug text-slate-500 dark:text-slate-400 sm:mt-0.5 sm:text-sm">
                   {card.label}
                 </p>
               </Link>
@@ -194,15 +195,19 @@ export function DashboardPage() {
               <div
                 key={record.attendanceId}
                 className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-                  {initials(record.fullName)}
-                </span>
+                <Avatar
+                  name={record.fullName}
+                  photoUrl={photoByUid.get(record.employeeUid)}
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-slate-900 dark:text-white">
                     {record.fullName}
                   </p>
                   <p className="truncate text-sm text-slate-500 dark:text-slate-400">
-                    {record.department} · {record.checkInTime}
+                    {record.employeeId} · {record.department}
+                  </p>
+                  <p className="truncate text-xs text-slate-400">
+                    {formatDisplayDate(record.checkInDate)} · {record.checkInTime}
                   </p>
                 </div>
                 <span

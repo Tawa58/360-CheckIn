@@ -1,24 +1,24 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {ScrollView, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {CalendarCheck, Clock} from 'lucide-react-native';
+import {CalendarCheck, Clock, MapPin, MapPinOff} from 'lucide-react-native';
 import {Button} from '../components/Button';
 import {Card} from '../components/Card';
 import {GpsBanner} from '../components/GpsBanner';
-import {StatusBadge} from '../components/StatusBadge';
 import {useAuth} from '../context/AuthContext';
 import {
   getTodayAttendance,
   submitCheckIn,
 } from '../services/attendanceService';
-import {getVerifiedLocation, type LocationResult} from '../services/locationService';
+import {useGeofenceMonitor} from '../hooks/useGeofenceMonitor';
+import {GeofencePanel} from '../components/GeofencePanel';
 import type {AttendanceRecord} from '../../shared/types';
 import {formatDisplayDate, localISODate} from '../../shared/dates';
 
 export function CheckInScreen() {
   const {employee} = useAuth();
-  const [gps, setGps] = useState<LocationResult | null>(null);
-  const [gpsLoading, setGpsLoading] = useState(false);
+  const geofence = useGeofenceMonitor(employee);
+  const {gps, gpsLoading, refreshGps} = geofence;
   const [submitting, setSubmitting] = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
   const [message, setMessage] = useState('');
@@ -27,15 +27,6 @@ export function CheckInScreen() {
   const firstName = employee?.fullName.split(' ')[0] ?? 'there';
   const gpsReady = gps?.ok === true;
   const alreadyCheckedIn = Boolean(todayRecord);
-
-  const refreshGps = useCallback(async () => {
-    setGpsLoading(true);
-    setError('');
-    const result = await getVerifiedLocation();
-    setGps(result);
-    setGpsLoading(false);
-    return result;
-  }, []);
 
   const loadToday = useCallback(async () => {
     if (!employee) {
@@ -94,39 +85,91 @@ export function CheckInScreen() {
         {alreadyCheckedIn && todayRecord ? (
           <View className="mt-5">
             <Card>
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base font-semibold text-ink-900">
-                  Today’s check-in
-                </Text>
-                <StatusBadge status={todayRecord.locationStatus} />
-              </View>
+              <Text className="text-base font-semibold text-ink-900">Today’s check-in</Text>
               <View className="mt-4 flex-row items-center">
                 <Clock size={16} color="#5B6B7A" />
+                <Text className="ml-2 text-sm text-ink-500">{todayRecord.checkInTime}</Text>
+              </View>
+              <View className="mt-2 flex-row items-center">
+                <MapPin size={16} color="#5B6B7A" />
                 <Text className="ml-2 text-sm text-ink-500">
-                  {todayRecord.checkInTime}
+                  {todayRecord.latitude.toFixed(5)}, {todayRecord.longitude.toFixed(5)}
                 </Text>
               </View>
-              <Text className="mt-2 text-sm text-ink-500">
-                {todayRecord.latitude.toFixed(6)}, {todayRecord.longitude.toFixed(6)}
-              </Text>
+              <View
+                className={`mt-3 flex-row items-start rounded-2xl px-3 py-2.5 ${
+                  geofence.zone === null
+                    ? 'bg-slate-50'
+                    : geofence.zone === 'outside'
+                      ? 'bg-rose-50'
+                      : 'bg-emerald-50'
+                }`}>
+                {geofence.zone === 'outside' ? (
+                  <MapPinOff size={16} color="#E11D48" />
+                ) : (
+                  <MapPin size={16} color={geofence.zone === null ? '#94A3B8' : '#059669'} />
+                )}
+                <View className="ml-2 flex-1">
+                  <Text
+                    className={`text-[10px] font-bold uppercase tracking-widest ${
+                      geofence.zone === null
+                        ? 'text-ink-400'
+                        : geofence.zone === 'outside'
+                          ? 'text-rose-700'
+                          : 'text-emerald-700'
+                    }`}>
+                    {geofence.zone === null
+                      ? 'Waiting for GPS'
+                      : geofence.zone === 'outside'
+                        ? 'Outside company premises'
+                        : 'Inside company premises'}
+                  </Text>
+                  <Text className="mt-0.5 text-[11px] leading-4 text-ink-500">
+                    {geofence.zone === null
+                      ? 'Live location is needed to confirm the boundary.'
+                      : geofence.zone === 'outside'
+                        ? 'You are outside the geofence boundary.'
+                        : 'You are inside the geofence boundary.'}
+                  </Text>
+                </View>
+              </View>
             </Card>
           </View>
         ) : null}
 
+        {!alreadyCheckedIn ? (
+          <View className="mt-5">
+            <Button
+              title={gpsReady ? 'Check in now' : 'Check-in blocked'}
+              loading={submitting}
+              disabled={!gpsReady || gpsLoading}
+              onPress={onCheckIn}
+            />
+          </View>
+        ) : null}
+
         <View className="mt-5">
-          <Button
-            title={
-              alreadyCheckedIn
-                ? 'Already checked in'
-                : gpsReady
-                  ? 'Check in now'
-                  : 'Check-in blocked'
-            }
-            loading={submitting}
-            disabled={!gpsReady || alreadyCheckedIn || gpsLoading}
-            onPress={onCheckIn}
+          <GeofencePanel
+            site={geofence.site}
+            location={gps?.ok ? gps.location : null}
+            gpsMessage={gps && !gps.ok ? gps.message : undefined}
+            reading={geofence.reading}
+            zone={geofence.zone}
+            openEvent={geofence.openEvent}
+            lastClosed={geofence.lastClosed}
+            todayEvents={geofence.todayEvents}
+            secondsOutside={geofence.secondsOutside}
+            reasonSaving={geofence.reasonSaving}
+            reasonError={geofence.reasonError}
+            checkInTime={todayRecord?.checkInTime}
+            checkInCreatedAt={todayRecord?.createdAt}
+            onSubmitReason={geofence.submitReason}
           />
         </View>
+
+        {geofence.syncError ? (
+          <Text className="mt-3 text-sm text-amber-700">{geofence.syncError}</Text>
+        ) : null}
 
         {!gpsReady && !alreadyCheckedIn ? (
           <View className="mt-4 flex-row items-start rounded-2xl bg-white p-4">

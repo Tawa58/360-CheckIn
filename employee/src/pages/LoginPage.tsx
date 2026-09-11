@@ -65,8 +65,7 @@ export function LoginPage() {
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <p>
                   Add your Firebase web credentials in{' '}
-                  <code className="font-mono text-xs">shared/firebaseConfig.ts</code> before
-                  checking in.
+                  <code className="font-mono text-xs">.env</code> before checking in.
                 </p>
               </div>
             ) : null}
@@ -81,7 +80,7 @@ export function LoginPage() {
                     autoCapitalize="none"
                     autoCorrect="off"
                     autoComplete="username"
-                    placeholder="jane.doe"
+                    placeholder="msekiwa"
                     className="field-input pl-11"
                     value={username}
                     onChange={event => setUsername(event.target.value)}

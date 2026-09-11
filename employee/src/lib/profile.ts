@@ -40,17 +40,17 @@ export function compressProfileImage(file: File): Promise<string> {
   });
 }
 
-export async function saveProfilePhoto(employeeUid: string, photoUrl: string): Promise<void> {
+export async function saveProfilePhoto(employeeId: string, photoUrl: string): Promise<void> {
   const {db} = requireFirebase();
-  await updateDoc(doc(db, COLLECTIONS.employees, employeeUid), {
+  await updateDoc(doc(db, COLLECTIONS.employees, employeeId), {
     photoUrl,
     updatedAt: new Date().toISOString(),
   });
 }
 
-export async function clearProfilePhoto(employeeUid: string): Promise<void> {
+export async function clearProfilePhoto(employeeId: string): Promise<void> {
   const {db} = requireFirebase();
-  await updateDoc(doc(db, COLLECTIONS.employees, employeeUid), {
+  await updateDoc(doc(db, COLLECTIONS.employees, employeeId), {
     photoUrl: '',
     updatedAt: new Date().toISOString(),
   });

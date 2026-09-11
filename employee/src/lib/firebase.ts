@@ -1,4 +1,5 @@
 import {initializeApp, getApps, getApp} from 'firebase/app';
+import {getAnalytics, isSupported} from 'firebase/analytics';
 import {connectAuthEmulator, getAuth} from 'firebase/auth';
 import {connectFirestoreEmulator, getFirestore} from 'firebase/firestore';
 import {
@@ -18,6 +19,14 @@ const app = firebaseReady
 
 export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;
+
+if (app && firebaseConfig.measurementId) {
+  void isSupported().then(supported => {
+    if (supported) {
+      getAnalytics(app);
+    }
+  });
+}
 
 if (USE_FIREBASE_EMULATOR && auth && db) {
   try {
@@ -43,7 +52,7 @@ if (USE_FIREBASE_EMULATOR && auth && db) {
 export function requireFirebase() {
   if (!firebaseReady || !auth || !db) {
     throw new Error(
-      'Firebase is not configured. Add your project keys in shared/firebaseConfig.ts.',
+      'Firebase is not configured. Add your project keys in the repo-root .env file.',
     );
   }
   return {auth, db};

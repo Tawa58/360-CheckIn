@@ -97,6 +97,57 @@ function mapGeolocationError(error: GeolocationError): LocationResult {
   };
 }
 
+function readPosition(position: GeolocationResponse): LocationResult {
+  const {latitude, longitude, accuracy} = position.coords;
+  if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
+    return {
+      ok: false,
+      reason: 'unavailable',
+      message: 'GPS coordinates could not be verified.',
+    };
+  }
+  return {
+    ok: true,
+    location: {
+      latitude,
+      longitude,
+      accuracy: Number.isFinite(accuracy) ? accuracy : null,
+    },
+  };
+}
+
+export async function watchVerifiedLocation(
+  onUpdate: (result: LocationResult) => void,
+): Promise<() => void> {
+  const permitted = await requestLocationPermission();
+  if (!permitted) {
+    onUpdate({
+      ok: false,
+      reason: 'permission_denied',
+      message:
+        'Location permission is required. Check-in is blocked without GPS.',
+    });
+    return () => {};
+  }
+
+  const watchId = Geolocation.watchPosition(
+    (position: GeolocationResponse) => {
+      onUpdate(readPosition(position));
+    },
+    (error: GeolocationError) => {
+      onUpdate(mapGeolocationError(error));
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 3000,
+      distanceFilter: 5,
+    },
+  );
+
+  return () => Geolocation.clearWatch(watchId);
+}
+
 export async function getVerifiedLocation(): Promise<LocationResult> {
   const permitted = await requestLocationPermission();
   if (!permitted) {
@@ -111,23 +162,7 @@ export async function getVerifiedLocation(): Promise<LocationResult> {
   return new Promise(resolve => {
     Geolocation.getCurrentPosition(
       (position: GeolocationResponse) => {
-        const {latitude, longitude, accuracy} = position.coords;
-        if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
-          resolve({
-            ok: false,
-            reason: 'unavailable',
-            message: 'GPS coordinates could not be verified.',
-          });
-          return;
-        }
-        resolve({
-          ok: true,
-          location: {
-            latitude,
-            longitude,
-            accuracy: Number.isFinite(accuracy) ? accuracy : null,
-          },
-        });
+        resolve(readPosition(position));
       },
       (error: GeolocationError) => {
         resolve(mapGeolocationError(error));

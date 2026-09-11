@@ -65,9 +65,8 @@ export function LoginScreen() {
                   Firebase is not configured
                 </Text>
                 <Text className="mt-2 text-sm leading-5 text-amber-800">
-                  Add your Firebase web credentials in
-                  shared/firebaseConfig.ts, enable Email/Password auth, and
-                  create Firestore.
+                  Add your Firebase web credentials in .env, enable
+                  Email/Password auth, and create Firestore.
                 </Text>
               </View>
             ) : null}
@@ -79,7 +78,7 @@ export function LoginScreen() {
                 autoCorrect={false}
                 value={username}
                 onChangeText={setUsername}
-                placeholder="jane.doe"
+                placeholder="msekiwa"
               />
               <Input
                 label="Password"

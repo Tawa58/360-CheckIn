@@ -2,13 +2,16 @@ import {useEffect, useMemo, useState} from 'react';
 import {AlertCircle, CalendarDays, Loader2} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
 import {getAttendanceHistory} from '../lib/attendance';
+import {listEmployeeBoundaryEvents} from '../lib/boundaryEvents';
 import {
   buildPersonalMonthReport,
   currentMonthValue,
   formatMonthLabel,
 } from '../lib/myAttendance';
-import type {AttendanceRecord} from '@shared/types';
+import type {AttendanceRecord, BoundaryEvent} from '@shared/types';
 import {formatDisplayDate} from '@shared/dates';
+import {buildPremisesReport, premisesSummaryLine} from '@shared/premisesReport';
+import {formatDurationHuman, formatMeters} from '@shared/geofence';
 
 function statusClass(status: string) {
   if (status === 'Present') {
@@ -23,6 +26,7 @@ function statusClass(status: string) {
 export function AttendancePage() {
   const {employee} = useAuth();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [events, setEvents] = useState<BoundaryEvent[]>([]);
   const [month, setMonth] = useState(currentMonthValue());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,6 +42,9 @@ export function AttendancePage() {
         setError(err instanceof Error ? err.message : 'Unable to load your attendance.');
       })
       .finally(() => setLoading(false));
+    listEmployeeBoundaryEvents(employee.authUid)
+      .then(setEvents)
+      .catch(() => setEvents([]));
   }, [employee]);
 
   const report = useMemo(() => {
@@ -46,6 +53,13 @@ export function AttendancePage() {
     }
     return buildPersonalMonthReport(employee, records, month);
   }, [employee, loading, month, records]);
+
+  const premises = useMemo(() => {
+    if (!employee || loading) {
+      return null;
+    }
+    return buildPremisesReport(events, records, month, employee.authUid);
+  }, [employee, events, loading, month, records]);
 
   const minMonth = employee
     ? employee.createdAt.slice(0, 7)
@@ -129,6 +143,39 @@ export function AttendancePage() {
               ))}
             </ul>
           )}
+
+          {premises ? (
+            <section className="card mt-6 overflow-hidden p-5">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+                Premises exits
+              </h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {premisesSummaryLine(premises)}
+              </p>
+              {premises.rows.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-500">No exits recorded this month.</p>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {premises.rows.map(row => (
+                    <li key={row.eventId} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/80">
+                      <p className="font-semibold text-slate-900 dark:text-white">
+                        {formatDisplayDate(row.date)}
+                      </p>
+                      <p className="mt-1 text-sm tabular-nums text-slate-500">
+                        {row.exitClock} → {row.open ? 'Still out' : row.returnClock ?? '—'}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {formatDurationHuman(row.durationOutside)} · {formatMeters(row.distanceFromCentre)} from centre
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {formatMeters(row.distanceFromBoundary)} from boundary · {row.reason}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
         </>
       )}
     </div>

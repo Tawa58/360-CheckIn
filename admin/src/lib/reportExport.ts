@@ -2,6 +2,8 @@ import {jsPDF} from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import {formatDisplayDate} from '@shared/dates';
+import {formatDurationHuman, formatMeters} from '@shared/geofence';
+import {premisesSummaryLine, type PremisesReport} from '@shared/premisesReport';
 import {
   reportFilename,
   type EmployeeMonthRow,
@@ -51,7 +53,10 @@ function summaryCells(row: EmployeeMonthRow) {
   ];
 }
 
-export function exportMonthlyPdf(report: MonthlyAttendanceReport) {
+export function exportMonthlyPdf(
+  report: MonthlyAttendanceReport,
+  exits?: PremisesReport,
+) {
   const doc = new jsPDF({orientation: 'portrait', unit: 'mm', format: 'a4'});
   const margin = 14;
 
@@ -114,10 +119,47 @@ export function exportMonthlyPdf(report: MonthlyAttendanceReport) {
     });
   }
 
+  if (exits && exits.rows.length > 0) {
+    const previous = doc as jsPDF & {lastAutoTable?: {finalY: number}};
+    autoTable(doc, {
+      startY: (previous.lastAutoTable?.finalY ?? 42) + 10,
+      head: [[
+        'Employee',
+        'Date',
+        'Check-in',
+        'Exit',
+        'Return',
+        'Time outside',
+        'Distance',
+        'Reason',
+      ]],
+      body: exits.rows.map(row => [
+        row.fullName,
+        formatDisplayDate(row.date),
+        row.checkInTime ?? '—',
+        row.exitClock,
+        row.open ? 'Still out' : row.returnClock ?? '—',
+        formatDurationHuman(row.durationOutside),
+        formatMeters(row.distanceFromCentre),
+        row.reason,
+      ]),
+      styles: {fontSize: 7.5, cellPadding: 2},
+      headStyles: {fillColor: BRAND.ink, textColor: 255, fontStyle: 'bold'},
+      margin: {left: margin, right: margin},
+    });
+    const after = doc as jsPDF & {lastAutoTable?: {finalY: number}};
+    doc.setFontSize(8);
+    doc.setTextColor(...BRAND.muted);
+    doc.text(premisesSummaryLine(exits), margin, (after.lastAutoTable?.finalY ?? 42) + 6);
+  }
+
   doc.save(reportFilename(report, 'pdf'));
 }
 
-export function exportMonthlyExcel(report: MonthlyAttendanceReport) {
+export function exportMonthlyExcel(
+  report: MonthlyAttendanceReport,
+  exits?: PremisesReport,
+) {
   const workbook = XLSX.utils.book_new();
   const summary = XLSX.utils.aoa_to_sheet([
     ['CheckIn360 monthly attendance'],
@@ -174,6 +216,38 @@ export function exportMonthlyExcel(report: MonthlyAttendanceReport) {
       ...report.workingDates.map(() => ({wch: 4})),
     ];
     XLSX.utils.book_append_sheet(workbook, matrix, 'Daily');
+  }
+
+  if (exits && exits.rows.length > 0) {
+    const premises = XLSX.utils.aoa_to_sheet([
+      ['Premises exits'],
+      [premisesSummaryLine(exits)],
+      [],
+      ['Employee', 'Date', 'Check-in', 'Exit', 'Return', 'Time outside', 'Distance from centre', 'Distance from boundary', 'Reason'],
+      ...exits.rows.map(row => [
+        row.fullName,
+        formatDisplayDate(row.date),
+        row.checkInTime ?? '—',
+        row.exitClock,
+        row.open ? 'Still out' : row.returnClock ?? '—',
+        formatDurationHuman(row.durationOutside),
+        formatMeters(row.distanceFromCentre),
+        formatMeters(row.distanceFromBoundary),
+        row.reason,
+      ]),
+    ]);
+    premises['!cols'] = [
+      {wch: 22},
+      {wch: 16},
+      {wch: 12},
+      {wch: 12},
+      {wch: 12},
+      {wch: 14},
+      {wch: 18},
+      {wch: 20},
+      {wch: 22},
+    ];
+    XLSX.utils.book_append_sheet(workbook, premises, 'Premises exits');
   }
 
   const bytes = XLSX.write(workbook, {bookType: 'xlsx', type: 'array'});

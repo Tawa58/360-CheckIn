@@ -1,5 +1,6 @@
 import {collection, doc, getDocs, query, setDoc, where} from 'firebase/firestore';
 import {requireFirebase} from './firebase';
+import {messageDocumentId} from '@shared/docIds';
 import {
   COLLECTIONS,
   type Employee,
@@ -54,7 +55,11 @@ export async function submitEmployeeMessage(input: {
   }
 
   const {db} = requireFirebase();
-  const ref = doc(collection(db, COLLECTIONS.employeeMessages));
+  const ref = doc(
+    db,
+    COLLECTIONS.employeeMessages,
+    messageDocumentId(input.employee.employeeId),
+  );
   const message: EmployeeMessage = {
     messageId: ref.id,
     employeeUid: input.employee.authUid,
