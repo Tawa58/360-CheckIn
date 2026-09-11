@@ -12,8 +12,12 @@ Firebase (Auth + Firestore) is shared by all three.
 
 GitHub remotes:
 
-- https://github.com/Tawa58/360-CheckIn
-- https://github.com/tagboiityrn-collab/checkIn-360
+- https://github.com/Tawa58/360-CheckIn (source of truth)
+- https://github.com/tagboiityrn-collab/checkIn-360 (mirror)
+
+Every push to `main` on Tawa58 is copied to tagboi by GitHub Actions. Connect **tagboi Vercel** to the tagboi GitHub repo so those pushes also redeploy the admin site.
+
+Create a GitHub PAT for Tawa58 that can write to `tagboiityrn-collab/checkIn-360`, then add it on [Tawa58/360-CheckIn secrets](https://github.com/Tawa58/360-CheckIn/settings/secrets/actions) as `CHECKIN360_MIRROR_TOKEN`.
 
 ## Employee Android app
 
@@ -48,9 +52,10 @@ Staff download the app from `/get-app` on the deployed admin site.
 
 ## Admin on Vercel
 
-1. Import [this GitHub repo](https://github.com/Tawa58/360-CheckIn) into Vercel. Leave the **Root Directory** as the repository root. `vercel.json` already builds `admin/`.
+1. In tagboi’s Vercel account, import [tagboiityrn-collab/checkIn-360](https://github.com/tagboiityrn-collab/checkIn-360). Leave the **Root Directory** as the repository root. `vercel.json` already builds `admin/`.
 2. Add the same `VITE_*` Firebase and geofence variables from `.env.example` in the Vercel project settings.
 3. Deploy. Admin login is `/login`. Employee download is `/get-app`.
+4. Later Tawa58 pushes go to Tawa58 GitHub → the mirror Action updates tagboi GitHub → Vercel redeploys.
 
 Local admin:
 

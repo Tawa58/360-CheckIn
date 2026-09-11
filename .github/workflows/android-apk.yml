@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   build:
+    if: github.repository == 'Tawa58/360-CheckIn'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

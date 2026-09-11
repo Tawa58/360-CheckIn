@@ -1,0 +1,33 @@
+name: Mirror to tagboi
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: mirror-to-tagboi
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    if: github.repository == 'Tawa58/360-CheckIn'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push main to tagboiityrn-collab/checkIn-360
+        env:
+          MIRROR_TOKEN: ${{ secrets.CHECKIN360_MIRROR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MIRROR_TOKEN}" ]; then
+            echo "Add repository secret CHECKIN360_MIRROR_TOKEN on Tawa58/360-CheckIn."
+            echo "Use a GitHub PAT from Tawa58 with write access to tagboiityrn-collab/checkIn-360."
+            exit 1
+          fi
+          git push --force "https://x-access-token:${MIRROR_TOKEN}@github.com/tagboiityrn-collab/checkIn-360.git" "HEAD:refs/heads/main"
