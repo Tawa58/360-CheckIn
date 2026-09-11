@@ -46,7 +46,7 @@ export function VicinityMap({site, location, outside, muted}: Props) {
   return (
     <View className="overflow-hidden rounded-3xl bg-emerald-50">
       <View style={{height: 288}}>
-        <Image source={{uri: mapUri}} resizeMode="cover" style={StyleSheet.absoluteFillObject} />
+        <Image source={{uri: mapUri}} resizeMode="cover" style={StyleSheet.absoluteFill} />
         <Svg width="100%" height="100%" viewBox={`0 0 ${MAP_W} ${MAP_H}`}>
           {vertices.length >= 3 ? (
             <Polygon

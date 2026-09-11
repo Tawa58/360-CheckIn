@@ -1,0 +1,93 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Check Firebase secrets
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+        run: |
+          if [ -z "$VITE_FIREBASE_API_KEY" ]; then
+            echo "Add VITE_FIREBASE_* repository secrets before building the employee APK."
+            exit 1
+          fi
+
+      - name: Write .env for the release bundle
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_GEOFENCE_ID: ${{ secrets.VITE_GEOFENCE_ID }}
+          VITE_GEOFENCE_NAME: ${{ secrets.VITE_GEOFENCE_NAME }}
+          VITE_GEOFENCE_LAT: ${{ secrets.VITE_GEOFENCE_LAT }}
+          VITE_GEOFENCE_LNG: ${{ secrets.VITE_GEOFENCE_LNG }}
+          VITE_GEOFENCE_RADIUS: ${{ secrets.VITE_GEOFENCE_RADIUS }}
+        run: |
+          cat > .env << EOF
+          VITE_USE_FIREBASE_EMULATOR=false
+          VITE_FIREBASE_API_KEY=$VITE_FIREBASE_API_KEY
+          VITE_FIREBASE_AUTH_DOMAIN=$VITE_FIREBASE_AUTH_DOMAIN
+          VITE_FIREBASE_PROJECT_ID=$VITE_FIREBASE_PROJECT_ID
+          VITE_FIREBASE_STORAGE_BUCKET=$VITE_FIREBASE_STORAGE_BUCKET
+          VITE_FIREBASE_MESSAGING_SENDER_ID=$VITE_FIREBASE_MESSAGING_SENDER_ID
+          VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID
+          VITE_FIREBASE_MEASUREMENT_ID=$VITE_FIREBASE_MEASUREMENT_ID
+          VITE_GEOFENCE_ID=${VITE_GEOFENCE_ID:-office}
+          VITE_GEOFENCE_NAME=${VITE_GEOFENCE_NAME:-Company premises}
+          VITE_GEOFENCE_LAT=${VITE_GEOFENCE_LAT:--17.878626}
+          VITE_GEOFENCE_LNG=${VITE_GEOFENCE_LNG:-30.675888}
+          VITE_GEOFENCE_RADIUS=${VITE_GEOFENCE_RADIUS:-120}
+          EOF
+
+      - run: npm ci
+
+      - name: Build release APK
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
+
+      - name: Stage APK
+        run: |
+          mkdir -p dist-apk
+          cp android/app/build/outputs/apk/release/app-release.apk dist-apk/CheckIn360.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CheckIn360-android
+          path: dist-apk/CheckIn360.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: CheckIn360 Android
+          files: dist-apk/CheckIn360.apk
+          make_latest: true
+          body: |
+            Sideload this APK on employee phones.
+            Admin stays on the Vercel website.

@@ -9,6 +9,7 @@
     "start": "react-native start",
     "admin": "npm --prefix admin run dev",
     "employee": "npm --prefix employee run dev",
+    "android:apk": "node scripts/build-android-apk.mjs",
     "test": "jest"
   },
   "dependencies": {
@@ -27,7 +28,8 @@
     "react-native-safe-area-context": "^5.9.1",
     "react-native-screens": "^4.27.0",
     "react-native-svg": "^15.15.5",
-    "react-native-worklets": "^0.12.1"
+    "react-native-worklets": "^0.12.1",
+    "react-native-image-picker": "^8.2.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

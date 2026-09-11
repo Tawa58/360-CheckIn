@@ -24,6 +24,21 @@ export function currentMonthValue(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+export function shiftMonth(month: string, delta: number): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  return currentMonthValue(new Date(year, monthNumber - 1 + delta, 1));
+}
+
+export function clampMonth(month: string, min: string, max: string): string {
+  if (month < min) {
+    return min;
+  }
+  if (month > max) {
+    return max;
+  }
+  return month;
+}
+
 export function formatMonthLabel(month: string): string {
   const [year, monthNumber] = month.split('-').map(Number);
   return new Date(year, monthNumber - 1, 1).toLocaleDateString(undefined, {

@@ -3,11 +3,12 @@ import {ActivityIndicator, View} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {CalendarCheck, Clock3, UserRound} from 'lucide-react-native';
+import {CalendarCheck, ClipboardList, MessageSquarePlus, UserRound} from 'lucide-react-native';
 import {useAuth} from '../context/AuthContext';
 import {LoginScreen} from '../screens/LoginScreen';
 import {CheckInScreen} from '../screens/CheckInScreen';
 import {HistoryScreen} from '../screens/HistoryScreen';
+import {ReportScreen} from '../screens/ReportScreen';
 import {ProfileScreen} from '../screens/ProfileScreen';
 
 export type RootStackParamList = {
@@ -18,6 +19,7 @@ export type RootStackParamList = {
 export type MainTabParamList = {
   CheckIn: undefined;
   History: undefined;
+  Report: undefined;
   Profile: undefined;
 };
 
@@ -38,7 +40,7 @@ function MainTabs() {
           borderTopColor: '#E6EEF0',
           backgroundColor: '#FFFFFF',
         },
-        tabBarLabelStyle: {fontSize: 12, fontWeight: '600'},
+        tabBarLabelStyle: {fontSize: 11, fontWeight: '600'},
       }}>
       <Tab.Screen
         name="CheckIn"
@@ -52,8 +54,16 @@ function MainTabs() {
         name="History"
         component={HistoryScreen}
         options={{
-          tabBarLabel: 'History',
-          tabBarIcon: ({color}) => <Clock3 size={22} color={color} />,
+          tabBarLabel: 'Attendance',
+          tabBarIcon: ({color}) => <ClipboardList size={22} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Report"
+        component={ReportScreen}
+        options={{
+          tabBarLabel: 'Report',
+          tabBarIcon: ({color}) => <MessageSquarePlus size={22} color={color} />,
         }}
       />
       <Tab.Screen

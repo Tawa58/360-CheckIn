@@ -46,7 +46,7 @@ export function LoginScreen() {
               <Building2 size={28} color="#FFFFFF" />
             </View>
             <Text className="mt-6 text-3xl font-bold text-white">
-              CompanyCheckIn
+              CheckIn360
             </Text>
             <Text className="mt-2 text-base text-white/80">
               Daily attendance with verified GPS location.

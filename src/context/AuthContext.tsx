@@ -28,6 +28,7 @@ type AuthContextValue = {
     accessCode: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
+  refreshEmployee: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -89,9 +90,17 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     setEmployee(null);
   }, []);
 
+  const refreshEmployee = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+    const profile = await fetchEmployeeProfile(user.uid);
+    setEmployee(profile);
+  }, [user]);
+
   const value = useMemo(
-    () => ({initializing, user, employee, login, logout}),
-    [initializing, user, employee, login, logout],
+    () => ({initializing, user, employee, login, logout, refreshEmployee}),
+    [initializing, user, employee, login, logout, refreshEmployee],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

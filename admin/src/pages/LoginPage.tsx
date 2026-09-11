@@ -1,6 +1,6 @@
 import {useEffect, useState, type FormEvent} from 'react';
-import {useNavigate} from 'react-router-dom';
-import {AlertCircle, Eye, EyeOff, Loader2, Lock, Mail} from 'lucide-react';
+import {Link, useNavigate} from 'react-router-dom';
+import {AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, Smartphone} from 'lucide-react';
 import {firebaseReady} from '../lib/firebase';
 import {loginAdmin} from '../lib/adminAuth';
 import {Logo} from '../components/Logo';
@@ -133,7 +133,13 @@ export function LoginPage() {
           </div>
 
           <p className="mt-6 text-center text-xs text-white/50">
-            Employee accounts sign in from the mobile app, not here.
+            Employees use the Android app, not this dashboard.{' '}
+            <Link
+              to="/get-app"
+              className="inline-flex items-center gap-1 text-white/80 underline-offset-2 hover:underline">
+              <Smartphone className="h-3.5 w-3.5" />
+              Download CheckIn360
+            </Link>
           </p>
         </div>
       </div>

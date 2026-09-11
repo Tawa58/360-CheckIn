@@ -11,6 +11,7 @@ import {AttendancePage} from './pages/AttendancePage';
 import {SettingsPage} from './pages/SettingsPage';
 import {ReportsPage} from './pages/ReportsPage';
 import {MessagesPage} from './pages/MessagesPage';
+import {GetAppPage} from './pages/GetAppPage';
 import {firebaseReady} from './lib/firebase';
 import {ensureAdminProfile, logoutAdmin, subscribeToAdminAuth} from './lib/adminAuth';
 
@@ -69,6 +70,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/get-app" element={<GetAppPage />} />
       <Route
         path="/"
         element={user ? <Layout /> : <Navigate to="/login" replace />}>
@@ -79,6 +81,7 @@ export default function App() {
         <Route path="messages" element={<MessagesPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
+      <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>
   );
 }
