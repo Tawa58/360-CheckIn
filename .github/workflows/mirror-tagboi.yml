@@ -19,6 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Push main to tagboiityrn-collab/checkIn-360
         env:
@@ -27,7 +28,11 @@ jobs:
           set -euo pipefail
           if [ -z "${MIRROR_TOKEN}" ]; then
             echo "Add repository secret CHECKIN360_MIRROR_TOKEN on Tawa58/360-CheckIn."
-            echo "Use a GitHub PAT from Tawa58 with write access to tagboiityrn-collab/checkIn-360."
             exit 1
           fi
-          git push --force "https://x-access-token:${MIRROR_TOKEN}@github.com/tagboiityrn-collab/checkIn-360.git" "HEAD:refs/heads/main"
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          if ! git push --force "https://x-access-token:${MIRROR_TOKEN}@github.com/tagboiityrn-collab/checkIn-360.git" "HEAD:refs/heads/main"; then
+            echo "Git rejected CHECKIN360_MIRROR_TOKEN."
+            echo "The PAT must have Contents: Read and write on tagboiityrn-collab/checkIn-360."
+            exit 1
+          fi
