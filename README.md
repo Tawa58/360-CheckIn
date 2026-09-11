@@ -42,9 +42,9 @@ Release APK (needs `ANDROID_HOME`):
 npm run android:apk
 ```
 
-That copies `admin/public/downloads/CheckIn360.apk`. If this PC has no Android SDK, GitHub Actions builds it on every push to `main` and publishes [the latest APK](https://github.com/Tawa58/360-CheckIn/releases/latest/download/CheckIn360.apk).
+That copies `admin/public/downloads/CheckIn360.apk`. If this PC has no Android SDK, GitHub Actions builds it on every push to `main` and publishes [the latest APK](https://github.com/Tawa58/360-CheckIn/releases/latest/download/CheckIn360.apk). Until Firebase secrets exist, that job skips instead of failing.
 
-Add these **repository secrets** so the APK can talk to Firebase:
+Add these **repository secrets** on [Tawa58/360-CheckIn](https://github.com/Tawa58/360-CheckIn/settings/secrets/actions) so the APK can talk to Firebase:
 
 `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, and optionally `VITE_FIREBASE_MEASUREMENT_ID` plus the `VITE_GEOFENCE_*` values from `.env.example`.
 

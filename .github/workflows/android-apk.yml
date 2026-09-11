@@ -13,30 +13,37 @@ jobs:
     if: github.repository == 'Tawa58/360-CheckIn'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - uses: android-actions/setup-android@v3
+      - uses: actions/checkout@v5
 
       - name: Check Firebase secrets
+        id: firebase
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
         run: |
           if [ -z "$VITE_FIREBASE_API_KEY" ]; then
-            echo "Add VITE_FIREBASE_* repository secrets before building the employee APK."
-            exit 1
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping APK build. Add VITE_FIREBASE_* repository secrets on Tawa58/360-CheckIn."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - uses: actions/setup-node@v5
+        if: steps.firebase.outputs.skip != 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        if: steps.firebase.outputs.skip != 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v4
+        if: steps.firebase.outputs.skip != 'true'
+
       - name: Write .env for the release bundle
+        if: steps.firebase.outputs.skip != 'true'
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
@@ -67,23 +74,28 @@ jobs:
           VITE_GEOFENCE_RADIUS=${VITE_GEOFENCE_RADIUS:-120}
           EOF
 
-      - run: npm ci
+      - if: steps.firebase.outputs.skip != 'true'
+        run: npm ci
 
       - name: Build release APK
+        if: steps.firebase.outputs.skip != 'true'
         working-directory: android
         run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
 
       - name: Stage APK
+        if: steps.firebase.outputs.skip != 'true'
         run: |
           mkdir -p dist-apk
           cp android/app/build/outputs/apk/release/app-release.apk dist-apk/CheckIn360.apk
 
       - uses: actions/upload-artifact@v4
+        if: steps.firebase.outputs.skip != 'true'
         with:
           name: CheckIn360-android
           path: dist-apk/CheckIn360.apk
 
       - uses: softprops/action-gh-release@v2
+        if: steps.firebase.outputs.skip != 'true'
         with:
           tag_name: android-latest
           name: CheckIn360 Android
