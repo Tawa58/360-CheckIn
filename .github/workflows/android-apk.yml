@@ -37,10 +37,20 @@ jobs:
         if: steps.firebase.outputs.skip != 'true'
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - uses: android-actions/setup-android@v4
         if: steps.firebase.outputs.skip != 'true'
+
+      - name: Install Android SDK 37 and NDK
+        if: steps.firebase.outputs.skip != 'true'
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platforms;android-37" \
+            "build-tools;37.0.0" \
+            "ndk;27.1.12297006" \
+            "cmake;3.22.1"
 
       - name: Write .env for the release bundle
         if: steps.firebase.outputs.skip != 'true'
@@ -80,7 +90,10 @@ jobs:
       - name: Build release APK
         if: steps.firebase.outputs.skip != 'true'
         working-directory: android
-        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
+        run: |
+          chmod +x gradlew
+          echo "sdk.dir=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" > local.properties
+          ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a
 
       - name: Stage APK
         if: steps.firebase.outputs.skip != 'true'
