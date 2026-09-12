@@ -33,6 +33,7 @@ jobs:
           git config --local --unset-all http.https://github.com/.extraheader || true
           if ! git push --force "https://x-access-token:${MIRROR_TOKEN}@github.com/tagboiityrn-collab/checkIn-360.git" "HEAD:refs/heads/main"; then
             echo "Git rejected CHECKIN360_MIRROR_TOKEN."
-            echo "The PAT must have Contents: Read and write on tagboiityrn-collab/checkIn-360."
+            echo "Use a classic PAT with both repo and workflow scopes."
+            echo "workflow is required so the mirror can update .github/workflows files."
             exit 1
           fi

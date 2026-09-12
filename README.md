@@ -17,7 +17,7 @@ GitHub remotes:
 
 Every push to `main` on Tawa58 is copied to tagboi by GitHub Actions. Connect **tagboi Vercel** to the tagboi GitHub repo so those pushes also redeploy the admin site.
 
-Create a GitHub PAT for Tawa58 that can write to `tagboiityrn-collab/checkIn-360`, then add it on [Tawa58/360-CheckIn secrets](https://github.com/Tawa58/360-CheckIn/settings/secrets/actions) as `CHECKIN360_MIRROR_TOKEN`.
+Create a **classic** GitHub PAT on the tagboi account with **repo** and **workflow** ticked (workflow is required so `.github/workflows` files can be mirrored). Save it on [Tawa58/360-CheckIn secrets](https://github.com/Tawa58/360-CheckIn/settings/secrets/actions) as `CHECKIN360_MIRROR_TOKEN`.
 
 ## Employee Android app
 
