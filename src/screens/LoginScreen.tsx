@@ -2,13 +2,14 @@ import React, {useState} from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StatusBar,
   Text,
   View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {ShieldCheck} from 'lucide-react-native';
+import {AlertCircle, Eye, EyeOff, KeyRound, Lock, UserRound} from 'lucide-react-native';
 import {Button} from '../components/Button';
 import {Input} from '../components/Input';
 import {Logo} from '../components/Logo';
@@ -21,6 +22,7 @@ export function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [accessCode, setAccessCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -37,76 +39,91 @@ export function LoginScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-brand-800 dark:bg-slate-950">
-      <StatusBar barStyle="light-content" backgroundColor="#0F4C5C" />
+    <SafeAreaView
+      className="flex-1 bg-brand-900 dark:bg-slate-950"
+      edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B3A42" />
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerClassName="flex-grow">
-          <View className="flex-row items-center justify-between px-6 pb-2 pt-4">
-            <Logo variant="light" />
+          contentContainerClassName="grow justify-center px-5 py-8"
+          showsVerticalScrollIndicator={false}>
+          <View className="mb-8 flex-row items-center justify-between">
+            <Logo variant="light" style={{height: 40, width: 168}} />
             <ThemeToggle lightOnDark />
           </View>
-          <View className="px-6 pb-8 pt-6">
-            <Text className="text-3xl font-bold text-white">CheckIn360</Text>
-            <Text className="mt-2 text-base text-white/80">
-              Daily attendance with verified GPS location.
-            </Text>
-          </View>
 
-          <View className="flex-1 rounded-t-[32px] bg-ink-100 px-6 pb-10 pt-8 dark:bg-slate-900">
-            <Text className="text-xl font-bold text-ink-900 dark:text-white">
-              Employee login
-            </Text>
-            <Text className="mt-1 text-sm text-ink-500 dark:text-slate-400">
+          <View className="rounded-3xl bg-white p-5 dark:border dark:border-slate-800 dark:bg-slate-900">
+            <Text className="text-sm text-slate-500 dark:text-slate-400">
               Use your username, password, and issued access code.
             </Text>
 
             {!firebaseReady ? (
-              <View className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
-                <Text className="text-sm font-semibold text-amber-900">
-                  Firebase is not configured
-                </Text>
-                <Text className="mt-2 text-sm leading-5 text-amber-800">
-                  Add your Firebase web credentials in .env, enable
-                  Email/Password auth, and create Firestore.
+              <View className="mt-4 flex-row gap-3 rounded-2xl bg-amber-50 p-4 dark:bg-amber-500/10">
+                <AlertCircle size={20} color="#92400E" />
+                <Text className="flex-1 text-sm text-amber-900 dark:text-amber-200">
+                  Add your Firebase web credentials in .env before checking in.
                 </Text>
               </View>
             ) : null}
 
-            <View className="mt-6 gap-4">
+            <View className="mt-5 gap-4">
               <Input
                 label="Username"
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="username"
                 value={username}
                 onChangeText={setUsername}
                 placeholder="msekiwa"
+                leftIcon={<UserRound size={20} color="#94A3B8" />}
               />
               <Input
                 label="Password"
-                secureTextEntry
+                secureTextEntry={!showPassword}
+                autoComplete="password"
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Enter password"
+                leftIcon={<Lock size={20} color="#94A3B8" />}
+                rightSlot={
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                    onPress={() => setShowPassword(value => !value)}
+                    className="h-9 w-9 items-center justify-center rounded-full">
+                    {showPassword ? (
+                      <EyeOff size={20} color="#94A3B8" />
+                    ) : (
+                      <Eye size={20} color="#94A3B8" />
+                    )}
+                  </Pressable>
+                }
               />
               <Input
                 label="Access code"
                 autoCapitalize="characters"
                 autoCorrect={false}
+                autoComplete="one-time-code"
                 value={accessCode}
                 onChangeText={setAccessCode}
                 placeholder="EMP-7XQ92K"
+                leftIcon={<KeyRound size={20} color="#94A3B8" />}
               />
             </View>
 
             {error ? (
-              <Text className="mt-4 text-sm text-red-600">{error}</Text>
+              <View className="mt-4 flex-row gap-3 rounded-2xl bg-red-50 p-4 dark:bg-red-500/10">
+                <AlertCircle size={20} color="#B91C1C" />
+                <Text className="flex-1 text-sm text-red-700 dark:text-red-300">
+                  {error}
+                </Text>
+              </View>
             ) : null}
 
-            <View className="mt-6">
+            <View className="mt-5">
               <Button
                 title="Sign in"
                 loading={loading}
@@ -114,15 +131,11 @@ export function LoginScreen() {
                 onPress={onSubmit}
               />
             </View>
-
-            <View className="mt-6 flex-row items-start">
-              <ShieldCheck size={18} color="#16697A" />
-              <Text className="ml-2 flex-1 text-sm leading-5 text-ink-500 dark:text-slate-400">
-                Check-in stays locked until this device can verify a live GPS
-                position.
-              </Text>
-            </View>
           </View>
+
+          <Text className="mt-6 px-2 text-center text-xs leading-5 text-white/50">
+            Check-in stays locked until this device can verify a live GPS position.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

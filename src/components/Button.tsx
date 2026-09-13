@@ -41,7 +41,7 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       disabled={isDisabled}
-      className={`h-14 w-full flex-row items-center justify-center rounded-2xl ${variantClass[variant]} ${
+      className={`min-h-[48px] w-full flex-row items-center justify-center rounded-2xl px-5 ${variantClass[variant]} ${
         isDisabled ? 'opacity-50' : ''
       }`}
       {...rest}>
