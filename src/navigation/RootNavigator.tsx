@@ -5,6 +5,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {CalendarCheck, ClipboardList, MessageSquarePlus, UserRound} from 'lucide-react-native';
 import {useAuth} from '../context/AuthContext';
+import {useTheme} from '../context/ThemeContext';
 import {LoginScreen} from '../screens/LoginScreen';
 import {CheckInScreen} from '../screens/CheckInScreen';
 import {HistoryScreen} from '../screens/HistoryScreen';
@@ -27,18 +28,21 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabs() {
+  const {theme} = useTheme();
+  const isDark = theme === 'dark';
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#0F4C5C',
-        tabBarInactiveTintColor: '#8A9AA8',
+        tabBarActiveTintColor: isDark ? '#5EEAD4' : '#0F4C5C',
+        tabBarInactiveTintColor: isDark ? '#94A3B8' : '#8A9AA8',
         tabBarStyle: {
           height: 68,
           paddingTop: 8,
           paddingBottom: 10,
-          borderTopColor: '#E6EEF0',
-          backgroundColor: '#FFFFFF',
+          borderTopColor: isDark ? '#1E293B' : '#E6EEF0',
+          backgroundColor: isDark ? '#020617' : '#FFFFFF',
         },
         tabBarLabelStyle: {fontSize: 11, fontWeight: '600'},
       }}>
@@ -83,7 +87,7 @@ export function RootNavigator() {
 
   if (initializing) {
     return (
-      <View className="flex-1 items-center justify-center bg-ink-100">
+      <View className="flex-1 items-center justify-center bg-ink-100 dark:bg-slate-950">
         <ActivityIndicator size="large" color="#0F4C5C" />
       </View>
     );

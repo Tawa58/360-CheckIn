@@ -3,13 +3,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
   Text,
   View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {Building2, ShieldCheck} from 'lucide-react-native';
+import {ShieldCheck} from 'lucide-react-native';
 import {Button} from '../components/Button';
 import {Input} from '../components/Input';
+import {Logo} from '../components/Logo';
+import {ThemeToggle} from '../components/ThemeToggle';
 import {useAuth} from '../context/AuthContext';
 import {firebaseReady} from '../config/firebase';
 
@@ -34,28 +37,30 @@ export function LoginScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-brand-800">
+    <SafeAreaView className="flex-1 bg-brand-800 dark:bg-slate-950">
+      <StatusBar barStyle="light-content" backgroundColor="#0F4C5C" />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerClassName="flex-grow">
-          <View className="px-6 pb-8 pt-10">
-            <View className="h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
-              <Building2 size={28} color="#FFFFFF" />
-            </View>
-            <Text className="mt-6 text-3xl font-bold text-white">
-              CheckIn360
-            </Text>
+          <View className="flex-row items-center justify-between px-6 pb-2 pt-4">
+            <Logo variant="light" />
+            <ThemeToggle lightOnDark />
+          </View>
+          <View className="px-6 pb-8 pt-6">
+            <Text className="text-3xl font-bold text-white">CheckIn360</Text>
             <Text className="mt-2 text-base text-white/80">
               Daily attendance with verified GPS location.
             </Text>
           </View>
 
-          <View className="flex-1 rounded-t-[32px] bg-ink-100 px-6 pb-10 pt-8">
-            <Text className="text-xl font-bold text-ink-900">Employee login</Text>
-            <Text className="mt-1 text-sm text-ink-500">
+          <View className="flex-1 rounded-t-[32px] bg-ink-100 px-6 pb-10 pt-8 dark:bg-slate-900">
+            <Text className="text-xl font-bold text-ink-900 dark:text-white">
+              Employee login
+            </Text>
+            <Text className="mt-1 text-sm text-ink-500 dark:text-slate-400">
               Use your username, password, and issued access code.
             </Text>
 
@@ -112,7 +117,7 @@ export function LoginScreen() {
 
             <View className="mt-6 flex-row items-start">
               <ShieldCheck size={18} color="#16697A" />
-              <Text className="ml-2 flex-1 text-sm leading-5 text-ink-500">
+              <Text className="ml-2 flex-1 text-sm leading-5 text-ink-500 dark:text-slate-400">
                 Check-in stays locked until this device can verify a live GPS
                 position.
               </Text>

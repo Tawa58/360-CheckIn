@@ -9,11 +9,15 @@ type Props = TextInputProps & {
 export function Input({label, error, ...rest}: Props) {
   return (
     <View className="w-full">
-      <Text className="mb-2 text-sm font-semibold text-ink-800">{label}</Text>
+      <Text className="mb-2 text-sm font-semibold text-ink-800 dark:text-slate-200">
+        {label}
+      </Text>
       <TextInput
         placeholderTextColor="#8A9AA8"
-        className={`h-14 rounded-2xl border px-4 text-base text-ink-900 ${
-          error ? 'border-red-400 bg-red-50' : 'border-ink-200 bg-white'
+        className={`h-14 rounded-2xl border px-4 text-base text-ink-900 dark:text-white ${
+          error
+            ? 'border-red-400 bg-red-50 dark:bg-red-950'
+            : 'border-ink-200 bg-white dark:border-slate-700 dark:bg-slate-800'
         }`}
         {...rest}
       />

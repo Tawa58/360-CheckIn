@@ -5,6 +5,7 @@ import {CalendarCheck, Clock, MapPin, MapPinOff} from 'lucide-react-native';
 import {Button} from '../components/Button';
 import {Card} from '../components/Card';
 import {GpsBanner} from '../components/GpsBanner';
+import {ScreenHeader} from '../components/ScreenHeader';
 import {useAuth} from '../context/AuthContext';
 import {
   getTodayAttendance,
@@ -66,15 +67,16 @@ export function CheckInScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-ink-100">
+    <SafeAreaView className="flex-1 bg-ink-100 dark:bg-slate-950">
       <ScrollView contentContainerClassName="px-6 pb-10 pt-4">
-        <Text className="text-sm font-semibold uppercase tracking-wide text-brand-700">
+        <ScreenHeader />
+        <Text className="text-sm font-semibold uppercase tracking-wide text-brand-700 dark:text-teal-300">
           {formatDisplayDate(localISODate())}
         </Text>
-        <Text className="mt-1 text-3xl font-bold text-ink-900">
+        <Text className="mt-1 text-3xl font-bold text-ink-900 dark:text-white">
           Hello, {firstName}
         </Text>
-        <Text className="mt-1 text-base text-ink-500">
+        <Text className="mt-1 text-base text-ink-500 dark:text-slate-400">
           Verify GPS, then record today’s attendance.
         </Text>
 

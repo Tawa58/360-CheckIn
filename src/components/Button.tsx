@@ -16,15 +16,15 @@ type Props = PressableProps & {
 
 const variantClass: Record<ButtonVariant, string> = {
   primary: 'bg-brand-800 active:bg-brand-900',
-  secondary: 'bg-brand-50 active:bg-brand-100',
+  secondary: 'bg-brand-50 active:bg-brand-100 dark:bg-slate-800',
   ghost: 'bg-transparent',
   danger: 'bg-red-600 active:bg-red-700',
 };
 
 const textClass: Record<ButtonVariant, string> = {
   primary: 'text-white',
-  secondary: 'text-brand-800',
-  ghost: 'text-brand-800',
+  secondary: 'text-brand-800 dark:text-slate-100',
+  ghost: 'text-brand-800 dark:text-slate-100',
   danger: 'text-white',
 };
 

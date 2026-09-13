@@ -12,6 +12,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {Button} from '../components/Button';
 import {Card} from '../components/Card';
+import {ScreenHeader} from '../components/ScreenHeader';
 import {useAuth} from '../context/AuthContext';
 import {
   ABSENCE_CATEGORIES,
@@ -121,15 +122,18 @@ export function ReportScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-ink-100">
+    <SafeAreaView className="flex-1 bg-ink-100 dark:bg-slate-950">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerClassName="px-6 pb-10 pt-4">
-          <Text className="text-3xl font-bold text-ink-900">Send a report</Text>
-          <Text className="mt-1 text-base text-ink-500">
+          <ScreenHeader />
+          <Text className="text-3xl font-bold text-ink-900 dark:text-white">
+            Send a report
+          </Text>
+          <Text className="mt-1 text-base text-ink-500 dark:text-slate-400">
             Absence notices and system issues go to the admin inbox.
           </Text>
 

@@ -6,6 +6,7 @@ import {KeyRound, LogOut} from 'lucide-react-native';
 import {Avatar} from '../components/Avatar';
 import {Button} from '../components/Button';
 import {Card} from '../components/Card';
+import {ScreenHeader} from '../components/ScreenHeader';
 import {StatusBadge} from '../components/StatusBadge';
 import {useAuth} from '../context/AuthContext';
 import {clearProfilePhoto, saveProfilePhoto} from '../services/profile';
@@ -75,10 +76,13 @@ export function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-ink-100">
+    <SafeAreaView className="flex-1 bg-ink-100 dark:bg-slate-950">
       <ScrollView contentContainerClassName="px-6 pb-10 pt-4">
-        <Text className="text-3xl font-bold text-ink-900">Profile</Text>
-        <Text className="mt-1 text-base text-ink-500">
+        <ScreenHeader />
+        <Text className="text-3xl font-bold text-ink-900 dark:text-white">
+          Profile
+        </Text>
+        <Text className="mt-1 text-base text-ink-500 dark:text-slate-400">
           Your CheckIn360 access details and photo.
         </Text>
 
@@ -86,10 +90,12 @@ export function ProfileScreen() {
           <Card>
             <View className="items-center">
               <Avatar name={profile.fullName} photoUrl={profile.photoUrl} size="lg" />
-              <Text className="mt-4 text-2xl font-bold text-ink-900">
+              <Text className="mt-4 text-2xl font-bold text-ink-900 dark:text-white">
                 {profile.fullName}
               </Text>
-              <Text className="mt-1 text-sm text-ink-500">{profile.department}</Text>
+              <Text className="mt-1 text-sm text-ink-500 dark:text-slate-400">
+                {profile.department}
+              </Text>
             </View>
             <View className="mt-5 gap-3">
               <Detail label="Employee ID" value={profile.employeeId} />
@@ -128,18 +134,18 @@ export function ProfileScreen() {
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center">
                 <KeyRound size={18} color="#0F4C5C" />
-                <Text className="ml-2 text-base font-semibold text-ink-900">
+                <Text className="ml-2 text-base font-semibold text-ink-900 dark:text-white">
                   Access code
                 </Text>
               </View>
               <StatusBadge status={expired ? 'Expired' : 'Active'} />
             </View>
-            <View className="mt-4 rounded-2xl bg-ink-100 px-4 py-3">
-              <Text className="text-center text-2xl font-bold tracking-widest text-brand-800">
+            <View className="mt-4 rounded-2xl bg-ink-100 px-4 py-3 dark:bg-slate-800">
+              <Text className="text-center text-2xl font-bold tracking-widest text-brand-800 dark:text-teal-300">
                 {profile.accessCode}
               </Text>
             </View>
-            <Text className="mt-3 text-sm text-ink-500">
+            <Text className="mt-3 text-sm text-ink-500 dark:text-slate-400">
               Expires {formatExpiry(employee.codeExpiry)}
               {expired
                 ? '. Ask admin to renew this code.'
@@ -185,7 +191,7 @@ function Detail({label, value}: {label: string; value: string}) {
   return (
     <View>
       <Text className="text-xs uppercase tracking-wide text-ink-400">{label}</Text>
-      <Text className="mt-1 text-base text-ink-800">{value}</Text>
+      <Text className="mt-1 text-base text-ink-800 dark:text-slate-200">{value}</Text>
     </View>
   );
 }

@@ -11,6 +11,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {Clock3} from 'lucide-react-native';
 import {Card} from '../components/Card';
+import {ScreenHeader} from '../components/ScreenHeader';
 import {useAuth} from '../context/AuthContext';
 import {getAttendanceHistory} from '../services/attendanceService';
 import {listEmployeeBoundaryEvents} from '../services/boundaryEvents';
@@ -105,7 +106,7 @@ export function HistoryScreen() {
   const days = report?.days ?? [];
 
   return (
-    <SafeAreaView className="flex-1 bg-ink-100">
+    <SafeAreaView className="flex-1 bg-ink-100 dark:bg-slate-950">
       <FlatList
         data={days}
         keyExtractor={(item: PersonalDay) => item.date}
@@ -113,8 +114,11 @@ export function HistoryScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
           <View className="mb-5">
-            <Text className="text-3xl font-bold text-ink-900">Attendance</Text>
-            <Text className="mt-1 text-base text-ink-500">
+            <ScreenHeader />
+            <Text className="text-3xl font-bold text-ink-900 dark:text-white">
+              Attendance
+            </Text>
+            <Text className="mt-1 text-base text-ink-500 dark:text-slate-400">
               Present and absent weekdays. Weekends are not counted.
             </Text>
             <View className="mt-5 flex-row items-center rounded-2xl border border-ink-200 bg-white px-3 py-2">
