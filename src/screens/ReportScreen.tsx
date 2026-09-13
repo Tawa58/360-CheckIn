@@ -8,11 +8,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {Button} from '../components/Button';
 import {Card} from '../components/Card';
-import {ScreenHeader} from '../components/ScreenHeader';
 import {useAuth} from '../context/AuthContext';
 import {
   ABSENCE_CATEGORIES,
@@ -26,20 +24,32 @@ import {formatDisplayDate, formatDisplayDateTime, localISODate} from '../../shar
 const TABS: {id: EmployeeMessageKind; label: string; hint: string}[] = [
   {
     id: 'absence',
-    label: 'Absence',
+    label: 'Absence notice',
     hint: 'Tell admin why you will not be in, or why you missed a day.',
   },
   {
     id: 'issue',
-    label: 'Issue',
+    label: 'System issue',
     hint: 'Report an app error, failed check-in, GPS problem, or access-code issue.',
   },
 ];
 
 const STATUS_STYLE = {
-  open: {bg: 'bg-amber-50', text: 'text-amber-700', label: 'Open'},
-  seen: {bg: 'bg-sky-50', text: 'text-sky-700', label: 'Seen'},
-  resolved: {bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Resolved'},
+  open: {
+    bg: 'bg-amber-50 dark:bg-amber-500/15',
+    text: 'text-amber-700 dark:text-amber-300',
+    label: 'Open',
+  },
+  seen: {
+    bg: 'bg-sky-50 dark:bg-sky-500/15',
+    text: 'text-sky-700 dark:text-sky-300',
+    label: 'Seen',
+  },
+  resolved: {
+    bg: 'bg-emerald-50 dark:bg-emerald-500/15',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    label: 'Resolved',
+  },
 } as const;
 
 export function ReportScreen() {
@@ -122,148 +132,185 @@ export function ReportScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-ink-100 dark:bg-slate-950">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerClassName="px-6 pb-10 pt-4">
-          <ScreenHeader />
-          <Text className="text-3xl font-bold text-ink-900 dark:text-white">
-            Send a report
-          </Text>
-          <Text className="mt-1 text-base text-ink-500 dark:text-slate-400">
-            Absence notices and system issues go to the admin inbox.
-          </Text>
+    <KeyboardAvoidingView
+      className="flex-1 bg-slate-50 dark:bg-slate-950"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerClassName="px-4 pb-10 pt-5">
+        <Text className="text-2xl font-bold text-slate-900 dark:text-white">
+          Send a report
+        </Text>
+        <Text className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Absence notices and system issues go to the admin inbox.
+        </Text>
 
-          <View className="mt-5 flex-row rounded-2xl bg-white p-1">
-            {TABS.map(tab => (
-              <Pressable
-                key={tab.id}
-                onPress={() => switchKind(tab.id)}
-                className={`flex-1 rounded-xl px-3 py-2.5 ${
-                  kind === tab.id ? 'bg-brand-800' : 'bg-transparent'
+        <View className="mt-5 flex-row rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
+          {TABS.map(tab => (
+            <Pressable
+              key={tab.id}
+              onPress={() => switchKind(tab.id)}
+              className={`flex-1 rounded-xl px-3 py-2.5 ${
+                kind === tab.id
+                  ? 'bg-white dark:bg-slate-900'
+                  : 'bg-transparent'
+              }`}>
+              <Text
+                className={`text-center text-sm font-semibold ${
+                  kind === tab.id
+                    ? 'text-brand-800 dark:text-teal-200'
+                    : 'text-slate-500 dark:text-slate-400'
                 }`}>
-                <Text
-                  className={`text-center text-sm font-semibold ${
-                    kind === tab.id ? 'text-white' : 'text-ink-500'
-                  }`}>
-                  {tab.label}
+                {tab.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+          {activeTab?.hint}
+        </Text>
+
+        <View className="mt-4">
+          <Card>
+            {kind === 'absence' ? (
+              <View>
+                <Text className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  Date away
                 </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text className="mt-3 text-sm text-ink-500">{activeTab?.hint}</Text>
-
-          {kind === 'absence' ? (
-            <View className="mt-5">
-              <Text className="mb-2 text-sm font-semibold text-ink-800">Date away</Text>
-              <View className="flex-row items-center rounded-2xl border border-ink-200 bg-white px-3 py-2">
-                <Pressable onPress={() => shiftAbsenceDate(-1)} className="h-10 w-10 items-center justify-center">
-                  <Text className="text-xl font-bold text-brand-800">‹</Text>
-                </Pressable>
-                <Text className="flex-1 text-center text-base font-semibold text-ink-900">
-                  {formatDisplayDate(absenceDate)}
-                </Text>
-                <Pressable onPress={() => shiftAbsenceDate(1)} className="h-10 w-10 items-center justify-center">
-                  <Text className="text-xl font-bold text-brand-800">›</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null}
-
-          <Text className="mb-2 mt-5 text-sm font-semibold text-ink-800">
-            {kind === 'absence' ? 'Reason' : 'What went wrong'}
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {categories.map(item => (
-              <Pressable
-                key={item}
-                onPress={() => setCategory(item)}
-                className={`rounded-full px-3 py-1.5 ${
-                  category === item ? 'bg-brand-800' : 'bg-white'
-                }`}>
-                <Text
-                  className={`text-xs font-semibold ${
-                    category === item ? 'text-white' : 'text-ink-600'
-                  }`}>
-                  {item}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text className="mb-2 mt-5 text-sm font-semibold text-ink-800">Details</Text>
-          <TextInput
-            multiline
-            textAlignVertical="top"
-            placeholderTextColor="#8A9AA8"
-            className="min-h-[120px] rounded-2xl border border-ink-200 bg-white px-4 py-3 text-base text-ink-900"
-            placeholder={
-              kind === 'absence'
-                ? 'Add anything admin should know about this absence.'
-                : 'Describe the error, when it happened, and what you were trying to do.'
-            }
-            value={details}
-            onChangeText={setDetails}
-          />
-
-          {error ? <Text className="mt-4 text-sm text-red-600">{error}</Text> : null}
-          {notice ? (
-            <Text className="mt-4 text-sm font-medium text-emerald-700">{notice}</Text>
-          ) : null}
-
-          <View className="mt-5">
-            <Button
-              title={kind === 'absence' ? 'Send absence notice' : 'Send issue report'}
-              loading={submitting}
-              onPress={() => {
-                onSubmit().catch(() => undefined);
-              }}
-            />
-          </View>
-
-          <Text className="mb-3 mt-8 text-lg font-semibold text-ink-900">Your reports</Text>
-          {loading ? (
-            <Text className="text-sm text-ink-500">Loading reports…</Text>
-          ) : messages.length === 0 ? (
-            <Text className="text-sm text-ink-500">You have not sent a report yet.</Text>
-          ) : (
-            messages.map(message => {
-              const status = STATUS_STYLE[message.status];
-              return (
-                <View key={message.messageId} className="mb-3">
-                  <Card>
-                    <View className="flex-row items-start justify-between gap-3">
-                      <View className="flex-1 pr-2">
-                        <Text className="text-base font-semibold text-ink-900">
-                          {message.kind === 'absence' ? 'Absence' : 'System issue'} ·{' '}
-                          {message.category}
-                        </Text>
-                        {message.absenceDate ? (
-                          <Text className="mt-0.5 text-xs text-ink-400">
-                            Away {formatDisplayDate(message.absenceDate)}
-                          </Text>
-                        ) : null}
-                      </View>
-                      <View className={`rounded-full px-3 py-1 ${status.bg}`}>
-                        <Text className={`text-xs font-semibold ${status.text}`}>
-                          {status.label}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text className="mt-2 text-sm text-ink-600">{message.details}</Text>
-                    <Text className="mt-2 text-xs text-ink-400">
-                      Sent {formatDisplayDateTime(message.createdAt)}
+                <View className="flex-row items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                  <Pressable
+                    onPress={() => shiftAbsenceDate(-1)}
+                    className="h-10 w-10 items-center justify-center">
+                    <Text className="text-xl font-bold text-brand-800 dark:text-teal-300">
+                      ‹
                     </Text>
-                  </Card>
+                  </Pressable>
+                  <Text className="flex-1 text-center text-base font-semibold text-slate-900 dark:text-white">
+                    {formatDisplayDate(absenceDate)}
+                  </Text>
+                  <Pressable
+                    onPress={() => shiftAbsenceDate(1)}
+                    className="h-10 w-10 items-center justify-center">
+                    <Text className="text-xl font-bold text-brand-800 dark:text-teal-300">
+                      ›
+                    </Text>
+                  </Pressable>
                 </View>
-              );
-            })
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              </View>
+            ) : null}
+
+            <Text
+              className={`mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200 ${
+                kind === 'absence' ? 'mt-5' : ''
+              }`}>
+              {kind === 'absence' ? 'Reason' : 'What went wrong'}
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {categories.map(item => (
+                <Pressable
+                  key={item}
+                  onPress={() => setCategory(item)}
+                  className={`rounded-full px-3 py-1.5 ${
+                    category === item
+                      ? 'bg-brand-800'
+                      : 'bg-slate-100 dark:bg-slate-800'
+                  }`}>
+                  <Text
+                    className={`text-xs font-semibold ${
+                      category === item
+                        ? 'text-white'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}>
+                    {item}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text className="mb-2 mt-5 text-sm font-semibold text-slate-800 dark:text-slate-200">
+              Details
+            </Text>
+            <TextInput
+              multiline
+              textAlignVertical="top"
+              placeholderTextColor="#94A3B8"
+              className="min-h-[120px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              placeholder={
+                kind === 'absence'
+                  ? 'Add anything admin should know about this absence.'
+                  : 'Describe the error, when it happened, and what you were trying to do.'
+              }
+              value={details}
+              onChangeText={setDetails}
+            />
+
+            {error ? <Text className="mt-4 text-sm text-red-600">{error}</Text> : null}
+            {notice ? (
+              <Text className="mt-4 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                {notice}
+              </Text>
+            ) : null}
+
+            <View className="mt-5">
+              <Button
+                title={kind === 'absence' ? 'Send absence notice' : 'Send issue report'}
+                loading={submitting}
+                onPress={() => {
+                  onSubmit().catch(() => undefined);
+                }}
+              />
+            </View>
+          </Card>
+        </View>
+
+        <Text className="mb-1 mt-8 text-lg font-semibold text-slate-900 dark:text-white">
+          Your reports
+        </Text>
+        <Text className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Status updates after admin reviews them.
+        </Text>
+        {loading ? (
+          <Text className="text-sm text-slate-500">Loading reports…</Text>
+        ) : messages.length === 0 ? (
+          <Text className="text-sm text-slate-500 dark:text-slate-400">
+            You have not sent a report yet.
+          </Text>
+        ) : (
+          messages.map(message => {
+            const status = STATUS_STYLE[message.status];
+            return (
+              <View key={message.messageId} className="mb-3">
+                <Card>
+                  <View className="flex-row items-start justify-between gap-3">
+                    <View className="flex-1 pr-2">
+                      <Text className="text-base font-semibold text-slate-900 dark:text-white">
+                        {message.kind === 'absence' ? 'Absence' : 'System issue'} ·{' '}
+                        {message.category}
+                      </Text>
+                      {message.absenceDate ? (
+                        <Text className="mt-0.5 text-xs text-slate-400">
+                          Away {formatDisplayDate(message.absenceDate)}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <View className={`rounded-full px-3 py-1 ${status.bg}`}>
+                      <Text className={`text-xs font-semibold ${status.text}`}>
+                        {status.label}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    {message.details}
+                  </Text>
+                  <Text className="mt-2 text-xs text-slate-400">
+                    Sent {formatDisplayDateTime(message.createdAt)}
+                  </Text>
+                </Card>
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

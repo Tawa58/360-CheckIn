@@ -7,6 +7,8 @@ const LOCKUP = {
   light: require('../../admin/public/brand/logo-light.png'),
 } as const;
 
+const MARK = require('../../admin/public/brand/mark.png');
+
 type Props = {
   variant?: 'color' | 'light' | 'auto';
   style?: StyleProp<ImageStyle>;
@@ -24,7 +26,18 @@ export function Logo({variant = 'auto', style}: Props) {
       accessibilityLabel="CheckIn360"
       resizeMode="contain"
       source={source}
-      style={[{height: 40, width: 176}, style]}
+      style={[{height: 36, width: 160}, style]}
+    />
+  );
+}
+
+export function LogoMark({style}: {style?: StyleProp<ImageStyle>}) {
+  return (
+    <Image
+      accessibilityLabel="CheckIn360"
+      resizeMode="contain"
+      source={MARK}
+      style={[{height: 32, width: 29}, style]}
     />
   );
 }

@@ -1,31 +1,19 @@
 import React, {useCallback, useMemo, useState} from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {ActivityIndicator, FlatList, RefreshControl, Text, View} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {Clock3} from 'lucide-react-native';
 import {Card} from '../components/Card';
-import {ScreenHeader} from '../components/ScreenHeader';
+import {MonthPicker} from '../components/MonthPicker';
 import {useAuth} from '../context/AuthContext';
 import {getAttendanceHistory} from '../services/attendanceService';
 import {listEmployeeBoundaryEvents} from '../services/boundaryEvents';
 import type {AttendanceRecord, BoundaryEvent} from '../../shared/types';
-import {formatDisplayDate} from '../../shared/dates';
+import {formatDisplayDate, localTime} from '../../shared/dates';
 import {formatDurationHuman, formatMeters} from '../../shared/geofence';
-import {buildPremisesReport, premisesSummaryLine} from '../../shared/premisesReport';
 import {
   attendanceLabel,
   buildPersonalMonthReport,
-  clampMonth,
   currentMonthValue,
-  formatMonthLabel,
-  shiftMonth,
   type PersonalDay,
 } from '../../shared/personalAttendance';
 
@@ -46,8 +34,7 @@ export function HistoryScreen() {
       return;
     }
     setError('');
-    const history = await getAttendanceHistory(employee.authUid);
-    setRecords(history);
+    setRecords(await getAttendanceHistory(employee.authUid));
     try {
       setEvents(await listEmployeeBoundaryEvents(employee.authUid));
     } catch {
@@ -71,13 +58,6 @@ export function HistoryScreen() {
     return buildPersonalMonthReport(employee, records, month);
   }, [employee, loading, month, records]);
 
-  const premises = useMemo(() => {
-    if (!employee || loading) {
-      return null;
-    }
-    return buildPremisesReport(events, records, month, employee.authUid);
-  }, [employee, events, loading, month, records]);
-
   const checkInByDate = useMemo(() => {
     const byDate = new Map<string, AttendanceRecord>();
     for (const record of records) {
@@ -88,9 +68,10 @@ export function HistoryScreen() {
     return byDate;
   }, [records]);
 
-  function changeMonth(delta: number) {
-    setMonth(current => clampMonth(shiftMonth(current, delta), minMonth, maxMonth));
-  }
+  const monthExits = useMemo(
+    () => events.filter(event => event.eventDate.startsWith(month)).slice(0, 8),
+    [events, month],
+  );
 
   async function onRefresh() {
     setRefreshing(true);
@@ -106,159 +87,131 @@ export function HistoryScreen() {
   const days = report?.days ?? [];
 
   return (
-    <SafeAreaView className="flex-1 bg-ink-100 dark:bg-slate-950">
-      <FlatList
-        data={days}
-        keyExtractor={(item: PersonalDay) => item.date}
-        contentContainerClassName="px-6 pb-10 pt-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListHeaderComponent={
-          <View className="mb-5">
-            <ScreenHeader />
-            <Text className="text-3xl font-bold text-ink-900 dark:text-white">
-              Attendance
-            </Text>
-            <Text className="mt-1 text-base text-ink-500 dark:text-slate-400">
-              Present and absent weekdays. Weekends are not counted.
-            </Text>
-            <View className="mt-5 flex-row items-center rounded-2xl border border-ink-200 bg-white px-3 py-2">
-              <Pressable
-                onPress={() => changeMonth(-1)}
-                disabled={month <= minMonth}
-                className="h-10 w-10 items-center justify-center">
-                <Text
-                  className={`text-xl font-bold ${
-                    month <= minMonth ? 'text-ink-300' : 'text-brand-800'
-                  }`}>
-                  ‹
+    <FlatList
+      className="flex-1 bg-slate-50 dark:bg-slate-950"
+      data={days}
+      keyExtractor={(item: PersonalDay) => item.date}
+      contentContainerClassName="px-4 pb-10 pt-5"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      ListHeaderComponent={
+        <View className="mb-5">
+          <Text className="text-2xl font-bold text-slate-900 dark:text-white">
+            History
+          </Text>
+          <Text className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Present and absent weekdays for the month.
+          </Text>
+          <MonthPicker
+            month={month}
+            minMonth={minMonth}
+            maxMonth={maxMonth}
+            onChange={setMonth}
+          />
+          {error ? <Text className="mt-4 text-sm text-red-600">{error}</Text> : null}
+          {report ? (
+            <View className="mt-5 flex-row gap-3">
+              <View className="flex-1 rounded-3xl border border-ink-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <Text className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                  {report.presentDays}
                 </Text>
-              </Pressable>
-              <Text className="flex-1 text-center text-base font-semibold text-ink-900">
-                {formatMonthLabel(month)}
-              </Text>
-              <Pressable
-                onPress={() => changeMonth(1)}
-                disabled={month >= maxMonth}
-                className="h-10 w-10 items-center justify-center">
-                <Text
-                  className={`text-xl font-bold ${
-                    month >= maxMonth ? 'text-ink-300' : 'text-brand-800'
-                  }`}>
-                  ›
+                <Text className="mt-0.5 text-xs text-slate-500">Present</Text>
+              </View>
+              <View className="flex-1 rounded-3xl border border-ink-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <Text className="text-2xl font-bold text-rose-600 dark:text-rose-300">
+                  {report.absentDays}
                 </Text>
-              </Pressable>
+                <Text className="mt-0.5 text-xs text-slate-500">Absent</Text>
+              </View>
             </View>
-            {error ? <Text className="mt-3 text-sm text-red-600">{error}</Text> : null}
-            {report ? (
-              <View className="mt-5 flex-row flex-wrap gap-3">
-                <Stat label="Present" value={String(report.presentDays)} />
-                <Stat label="Absent" value={String(report.absentDays)} />
-                <Stat label="Working days" value={String(report.workingDays)} />
-                <Stat label="Attendance" value={`${report.attendanceRate}%`} />
-              </View>
-            ) : null}
-            {report && report.rejectedDays > 0 ? (
-              <Text className="mt-3 text-xs text-amber-800">
-                {report.rejectedDays} day{report.rejectedDays === 1 ? '' : 's'} had a
-                rejected GPS check-in. Those still count as present.
-              </Text>
-            ) : null}
-            {premises ? (
-              <View className="mt-5">
-                <Text className="mb-2 text-lg font-semibold text-ink-900">
-                  Premises exits
-                </Text>
-                <Text className="mb-3 text-sm text-ink-500">
-                  {premisesSummaryLine(premises)}
-                </Text>
-                {premises.rows.slice(0, 8).map(row => (
-                  <View key={row.eventId} className="mb-3">
-                    <Card>
-                      <Text className="text-base font-semibold text-ink-900">
-                        {formatDisplayDate(row.date)}
-                      </Text>
-                      <Text className="mt-1 text-sm text-ink-500">
-                        {row.exitClock} → {row.open ? 'Still out' : row.returnClock ?? '—'}
-                      </Text>
-                      <Text className="mt-1 text-sm text-ink-500">
-                        {formatDurationHuman(row.durationOutside)} ·{' '}
-                        {formatMeters(row.distanceFromCentre)} from centre
-                      </Text>
-                      <Text className="mt-1 text-xs text-ink-400">
-                        {formatMeters(row.distanceFromBoundary)} from boundary · {row.reason}
-                      </Text>
-                    </Card>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-            <Text className="mt-2 text-lg font-semibold text-ink-900">Daily record</Text>
-          </View>
-        }
-        ListEmptyComponent={
-          loading ? (
+          ) : null}
+        </View>
+      }
+      ListEmptyComponent={
+        loading ? (
+          <View className="flex-row items-center gap-2">
             <ActivityIndicator color="#0F4C5C" />
-          ) : (
+            <Text className="text-sm text-slate-500">Loading history…</Text>
+          </View>
+        ) : (
+          <Card>
+            <View className="items-center py-8">
+              <Clock3 size={28} color="#94A3B8" />
+              <Text className="mt-3 text-base font-semibold text-slate-800 dark:text-slate-200">
+                No working days yet
+              </Text>
+              <Text className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400">
+                Weekday attendance will appear here after your start date.
+              </Text>
+            </View>
+          </Card>
+        )
+      }
+      ListFooterComponent={
+        monthExits.length > 0 ? (
+          <View className="mt-6">
+            <Text className="text-base font-semibold text-slate-900 dark:text-white">
+              Premises exits
+            </Text>
+            {monthExits.map(event => (
+              <View key={event.eventId} className="mt-3">
+                <Card>
+                  <Text className="font-semibold text-slate-900 dark:text-white">
+                    {formatDisplayDate(event.eventDate)}
+                  </Text>
+                  <Text className="mt-1 text-sm text-slate-500">
+                    {localTime(new Date(event.exitTime))} →{' '}
+                    {event.returnTime ? localTime(new Date(event.returnTime)) : 'Still out'}
+                  </Text>
+                  <Text className="mt-1 text-sm text-slate-500">
+                    {formatDurationHuman(event.durationOutside ?? 0)} ·{' '}
+                    {formatMeters(event.maxDistanceFromCentre)} from centre
+                  </Text>
+                  <Text className="mt-1 text-xs text-slate-400">
+                    {formatMeters(event.maxDistanceFromBoundary)} from boundary
+                    {event.reason ? ` · ${event.reason}` : ''}
+                  </Text>
+                </Card>
+              </View>
+            ))}
+          </View>
+        ) : null
+      }
+      renderItem={({item}) => {
+        const present = attendanceLabel(item.status) === 'Present';
+        const checkIn = checkInByDate.get(item.date);
+        return (
+          <View className="mb-2">
             <Card>
-              <View className="items-center py-6">
-                <Clock3 size={28} color="#8A9AA8" />
-                <Text className="mt-3 text-base font-semibold text-ink-800">
-                  No working days yet
-                </Text>
-                <Text className="mt-1 text-center text-sm text-ink-500">
-                  {formatMonthLabel(month)} has no weekday attendance to show.
-                </Text>
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1 pr-3">
+                  <Text className="font-semibold text-slate-900 dark:text-white">
+                    {formatDisplayDate(item.date)}
+                  </Text>
+                  <Text className="text-xs text-slate-400">
+                    {item.weekday}
+                    {present && checkIn ? ` · ${checkIn.checkInTime}` : ''}
+                  </Text>
+                </View>
+                <View
+                  className={`rounded-full px-2.5 py-1 ${
+                    present
+                      ? 'bg-emerald-50 dark:bg-emerald-500/15'
+                      : 'bg-rose-50 dark:bg-rose-500/15'
+                  }`}>
+                  <Text
+                    className={`text-xs font-semibold ${
+                      present
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : 'text-rose-700 dark:text-rose-300'
+                    }`}>
+                    {present ? 'Present' : 'Absent'}
+                  </Text>
+                </View>
               </View>
             </Card>
-          )
-        }
-        renderItem={({item}) => {
-          const present = attendanceLabel(item.status) === 'Present';
-          const rejected = item.status === 'Rejected';
-          const checkIn = checkInByDate.get(item.date);
-          return (
-            <View className="mb-2">
-              <Card>
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1 pr-3">
-                    <Text className="text-base font-semibold text-ink-900">
-                      {formatDisplayDate(item.date)}
-                    </Text>
-                    <Text className="mt-1 text-xs text-ink-400">
-                      {item.weekday}
-                      {present && checkIn ? ` · ${checkIn.checkInTime}` : ''}
-                    </Text>
-                  </View>
-                  <View
-                    className={`rounded-full px-3 py-1 ${
-                      rejected ? 'bg-amber-50' : present ? 'bg-emerald-50' : 'bg-rose-50'
-                    }`}>
-                    <Text
-                      className={`text-xs font-semibold ${
-                        rejected
-                          ? 'text-amber-700'
-                          : present
-                            ? 'text-emerald-700'
-                            : 'text-rose-700'
-                      }`}>
-                      {item.status}
-                    </Text>
-                  </View>
-                </View>
-              </Card>
-            </View>
-          );
-        }}
-      />
-    </SafeAreaView>
-  );
-}
-
-function Stat({label, value}: {label: string; value: string}) {
-  return (
-    <View className="min-w-[47%] flex-1 rounded-3xl bg-white p-4">
-      <Text className="text-2xl font-bold text-brand-800">{value}</Text>
-      <Text className="mt-0.5 text-xs text-ink-500">{label}</Text>
-    </View>
+          </View>
+        );
+      }}
+    />
   );
 }

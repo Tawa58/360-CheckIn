@@ -1,22 +1,18 @@
 import React, {useState} from 'react';
-import {Alert, ScrollView, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Alert, Pressable, ScrollView, Text, View} from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
-import {KeyRound, LogOut} from 'lucide-react-native';
+import {Camera, KeyRound, LogOut} from 'lucide-react-native';
 import {Avatar} from '../components/Avatar';
 import {Button} from '../components/Button';
 import {Card} from '../components/Card';
-import {ScreenHeader} from '../components/ScreenHeader';
-import {StatusBadge} from '../components/StatusBadge';
 import {useAuth} from '../context/AuthContext';
-import {clearProfilePhoto, saveProfilePhoto} from '../services/profile';
+import {saveProfilePhoto} from '../services/profile';
 import {daysUntil, formatExpiry, isExpired} from '../../shared/dates';
 
 export function ProfileScreen() {
   const {employee, logout, refreshEmployee} = useAuth();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
 
   if (!employee) {
     return null;
@@ -28,7 +24,6 @@ export function ProfileScreen() {
 
   async function onPickPhoto() {
     setError('');
-    setNotice('');
     const result = await launchImageLibrary({
       mediaType: 'photo',
       quality: 0.7,
@@ -47,12 +42,8 @@ export function ProfileScreen() {
     }
     setSaving(true);
     try {
-      await saveProfilePhoto(
-        profile.employeeId,
-        `data:image/jpeg;base64,${asset.base64}`,
-      );
+      await saveProfilePhoto(profile.employeeId, `data:image/jpeg;base64,${asset.base64}`);
       await refreshEmployee();
-      setNotice('Profile photo updated.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save that photo.');
     } finally {
@@ -60,138 +51,126 @@ export function ProfileScreen() {
     }
   }
 
-  async function onRemovePhoto() {
-    setSaving(true);
-    setError('');
-    setNotice('');
-    try {
-      await clearProfilePhoto(profile.employeeId);
-      await refreshEmployee();
-      setNotice('Profile photo removed.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to remove the photo.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
-    <SafeAreaView className="flex-1 bg-ink-100 dark:bg-slate-950">
-      <ScrollView contentContainerClassName="px-6 pb-10 pt-4">
-        <ScreenHeader />
-        <Text className="text-3xl font-bold text-ink-900 dark:text-white">
-          Profile
-        </Text>
-        <Text className="mt-1 text-base text-ink-500 dark:text-slate-400">
-          Your CheckIn360 access details and photo.
-        </Text>
+    <ScrollView
+      className="flex-1 bg-slate-50 dark:bg-slate-950"
+      contentContainerClassName="px-4 pb-10 pt-5">
+      <Text className="text-2xl font-bold text-slate-900 dark:text-white">Profile</Text>
+      <Text className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Employee access details for this device.
+      </Text>
 
-        <View className="mt-6">
-          <Card>
-            <View className="items-center">
+      <View className="mt-6">
+        <Card>
+          <View className="flex-row items-center gap-4">
+            <View className="relative">
               <Avatar name={profile.fullName} photoUrl={profile.photoUrl} size="lg" />
-              <Text className="mt-4 text-2xl font-bold text-ink-900 dark:text-white">
-                {profile.fullName}
-              </Text>
-              <Text className="mt-1 text-sm text-ink-500 dark:text-slate-400">
-                {profile.department}
-              </Text>
-            </View>
-            <View className="mt-5 gap-3">
-              <Detail label="Employee ID" value={profile.employeeId} />
-              <Detail label="Username" value={profile.username} />
-            </View>
-            <View className="mt-5">
-              <Button
-                title={profile.photoUrl ? 'Replace photo' : 'Upload photo'}
-                loading={saving}
+              <Pressable
+                accessibilityLabel="Upload profile photo"
+                disabled={saving}
                 onPress={() => {
                   onPickPhoto().catch(() => undefined);
                 }}
-              />
+                className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full bg-brand-800">
+                <Camera size={16} color="#FFFFFF" />
+              </Pressable>
             </View>
-            {profile.photoUrl ? (
-              <View className="mt-3">
-                <Button
-                  title="Remove photo"
-                  variant="secondary"
-                  disabled={saving}
-                  onPress={() => {
-                    onRemovePhoto().catch(() => undefined);
-                  }}
-                />
-              </View>
-            ) : null}
-            {error ? <Text className="mt-3 text-sm text-red-600">{error}</Text> : null}
-            {notice ? (
-              <Text className="mt-3 text-sm font-medium text-emerald-700">{notice}</Text>
-            ) : null}
-          </Card>
-        </View>
-
-        <View className="mt-4">
-          <Card>
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center">
-                <KeyRound size={18} color="#0F4C5C" />
-                <Text className="ml-2 text-base font-semibold text-ink-900 dark:text-white">
-                  Access code
+            <View className="min-w-0 flex-1">
+              <Text className="truncate text-2xl font-bold text-slate-900 dark:text-white">
+                {profile.fullName}
+              </Text>
+              <Text className="mt-1 text-sm text-slate-500">{profile.department}</Text>
+              <Pressable
+                disabled={saving}
+                onPress={() => {
+                  onPickPhoto().catch(() => undefined);
+                }}>
+                <Text className="mt-2 text-sm font-semibold text-brand-700 dark:text-teal-300">
+                  {profile.photoUrl ? 'Change photo' : 'Upload photo'}
                 </Text>
-              </View>
-              <StatusBadge status={expired ? 'Expired' : 'Active'} />
+              </Pressable>
             </View>
-            <View className="mt-4 rounded-2xl bg-ink-100 px-4 py-3 dark:bg-slate-800">
-              <Text className="text-center text-2xl font-bold tracking-widest text-brand-800 dark:text-teal-300">
-                {profile.accessCode}
+          </View>
+          {error ? <Text className="mt-3 text-sm text-red-600">{error}</Text> : null}
+          <View className="mt-5 gap-3">
+            <Detail label="Employee ID" value={profile.employeeId} />
+            <Detail label="Username" value={profile.username} />
+          </View>
+        </Card>
+      </View>
+
+      <View className="mt-4">
+        <Card>
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <KeyRound size={16} color="#0F4C5C" />
+              <Text className="ml-2 text-base font-semibold text-slate-900 dark:text-white">
+                Access code
               </Text>
             </View>
-            <Text className="mt-3 text-sm text-ink-500 dark:text-slate-400">
-              Expires {formatExpiry(employee.codeExpiry)}
-              {expired
-                ? '. Ask admin to renew this code.'
-                : ` · ${remaining} day${remaining === 1 ? '' : 's'} remaining.`}
-            </Text>
-            <Text className="mt-2 text-xs leading-5 text-ink-400">
-              This code was generated at registration and is not changed during
-              daily check-in.
-            </Text>
-          </Card>
-        </View>
-
-        <View className="mt-8">
-          <Button
-            title="Sign out"
-            variant="secondary"
-            onPress={() => {
-              Alert.alert('Sign out', 'You will need your access code to sign in again.', [
-                {text: 'Cancel', style: 'cancel'},
-                {
-                  text: 'Sign out',
-                  style: 'destructive',
-                  onPress: () => {
-                    logout().catch(() => undefined);
-                  },
-                },
-              ]);
-            }}
-          />
-          <View className="mt-3 flex-row items-center justify-center">
-            <LogOut size={14} color="#8A9AA8" />
-            <Text className="ml-2 text-xs text-ink-400">
-              You will need your access code to sign in again.
+            <View
+              className={`rounded-full px-2.5 py-1 ${
+                expired
+                  ? 'bg-rose-50 dark:bg-rose-500/15'
+                  : 'bg-emerald-50 dark:bg-emerald-500/15'
+              }`}>
+              <Text
+                className={`text-xs font-semibold ${
+                  expired
+                    ? 'text-rose-700 dark:text-rose-300'
+                    : 'text-emerald-700 dark:text-emerald-300'
+                }`}>
+                {expired ? 'Expired' : 'Active'}
+              </Text>
+            </View>
+          </View>
+          <View className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
+            <Text className="text-center text-2xl font-bold tracking-widest text-brand-800 dark:text-teal-200">
+              {profile.accessCode}
             </Text>
           </View>
+          <Text className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+            Expires {formatExpiry(profile.codeExpiry)}
+            {expired
+              ? '. Ask admin to renew this code.'
+              : ` · ${remaining} day${remaining === 1 ? '' : 's'} remaining.`}
+          </Text>
+        </Card>
+      </View>
+
+      <View className="mt-8">
+        <Button
+          title="Sign out"
+          variant="secondary"
+          onPress={() => {
+            Alert.alert('Sign out', 'You will need your access code to sign in again.', [
+              {text: 'Cancel', style: 'cancel'},
+              {
+                text: 'Sign out',
+                style: 'destructive',
+                onPress: () => {
+                  logout().catch(() => undefined);
+                },
+              },
+            ]);
+          }}
+        />
+        <View className="mt-3 flex-row items-center justify-center">
+          <LogOut size={14} color="#94A3B8" />
+          <Text className="ml-2 text-xs text-slate-400">
+            You will need your access code to sign in again.
+          </Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScrollView>
   );
 }
 
 function Detail({label, value}: {label: string; value: string}) {
   return (
     <View>
-      <Text className="text-xs uppercase tracking-wide text-ink-400">{label}</Text>
-      <Text className="mt-1 text-base text-ink-800 dark:text-slate-200">{value}</Text>
+      <Text className="text-xs uppercase tracking-wide text-slate-400">{label}</Text>
+      <Text className="mt-1 text-base text-slate-800 dark:text-slate-200">{value}</Text>
     </View>
   );
 }
