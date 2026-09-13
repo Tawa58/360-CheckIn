@@ -59,11 +59,6 @@ export type GeofenceTick = {
   maxDistanceFromBoundary?: number;
 };
 
-function processEnv(key: string): string | undefined {
-  const runtime = globalThis as {process?: {env?: Record<string, string | undefined>}};
-  return runtime.process?.env?.[key];
-}
-
 function toFiniteNumber(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -72,16 +67,16 @@ function toFiniteNumber(value: string | undefined, fallback: number): number {
 export function geofenceFromEnv(): GeofenceSite {
   const radius = Math.max(
     10,
-    toFiniteNumber(processEnv('VITE_GEOFENCE_RADIUS'), DEFAULT_GEOFENCE.radiusMeters),
+    toFiniteNumber(process.env.VITE_GEOFENCE_RADIUS, DEFAULT_GEOFENCE.radiusMeters),
   );
-  const latitude = toFiniteNumber(processEnv('VITE_GEOFENCE_LAT'), DEFAULT_GEOFENCE.latitude);
-  const longitude = toFiniteNumber(processEnv('VITE_GEOFENCE_LNG'), DEFAULT_GEOFENCE.longitude);
+  const latitude = toFiniteNumber(process.env.VITE_GEOFENCE_LAT, DEFAULT_GEOFENCE.latitude);
+  const longitude = toFiniteNumber(process.env.VITE_GEOFENCE_LNG, DEFAULT_GEOFENCE.longitude);
   const matchesDefault =
     Math.abs(latitude - DEFAULT_GEOFENCE.latitude) < 0.0002 &&
     Math.abs(longitude - DEFAULT_GEOFENCE.longitude) < 0.0002;
   return {
-    id: processEnv('VITE_GEOFENCE_ID')?.trim() || DEFAULT_GEOFENCE.id,
-    name: processEnv('VITE_GEOFENCE_NAME')?.trim() || DEFAULT_GEOFENCE.name,
+    id: process.env.VITE_GEOFENCE_ID?.trim() || DEFAULT_GEOFENCE.id,
+    name: process.env.VITE_GEOFENCE_NAME?.trim() || DEFAULT_GEOFENCE.name,
     latitude,
     longitude,
     radiusMeters: radius,

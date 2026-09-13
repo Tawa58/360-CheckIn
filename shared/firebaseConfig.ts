@@ -6,13 +6,8 @@ function trimEnv(value: string | undefined): string {
   return (value ?? '').trim();
 }
 
-function processEnv(key: string): string | undefined {
-  const runtime = globalThis as {process?: {env?: Record<string, string | undefined>}};
-  return runtime.process?.env?.[key];
-}
-
 export const USE_FIREBASE_EMULATOR =
-  trimEnv(processEnv('VITE_USE_FIREBASE_EMULATOR')) === 'true';
+  trimEnv(process.env.VITE_USE_FIREBASE_EMULATOR) === 'true';
 
 export const FIREBASE_EMULATOR = {
   host: '127.0.0.1',
@@ -40,13 +35,13 @@ export const firebaseConfig: FirebaseWebConfig = USE_FIREBASE_EMULATOR
       appId: '1:123456789:web:demo',
     }
   : {
-      apiKey: trimEnv(processEnv('VITE_FIREBASE_API_KEY')),
-      authDomain: trimEnv(processEnv('VITE_FIREBASE_AUTH_DOMAIN')),
-      projectId: trimEnv(processEnv('VITE_FIREBASE_PROJECT_ID')),
-      storageBucket: trimEnv(processEnv('VITE_FIREBASE_STORAGE_BUCKET')),
-      messagingSenderId: trimEnv(processEnv('VITE_FIREBASE_MESSAGING_SENDER_ID')),
-      appId: trimEnv(processEnv('VITE_FIREBASE_APP_ID')),
-      measurementId: trimEnv(processEnv('VITE_FIREBASE_MEASUREMENT_ID')) || undefined,
+      apiKey: trimEnv(process.env.VITE_FIREBASE_API_KEY),
+      authDomain: trimEnv(process.env.VITE_FIREBASE_AUTH_DOMAIN),
+      projectId: trimEnv(process.env.VITE_FIREBASE_PROJECT_ID),
+      storageBucket: trimEnv(process.env.VITE_FIREBASE_STORAGE_BUCKET),
+      messagingSenderId: trimEnv(process.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+      appId: trimEnv(process.env.VITE_FIREBASE_APP_ID),
+      measurementId: trimEnv(process.env.VITE_FIREBASE_MEASUREMENT_ID) || undefined,
     };
 
 export const AUTHORIZED_ADMIN_EMAILS: string[] = [
