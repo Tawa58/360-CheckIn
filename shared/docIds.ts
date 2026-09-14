@@ -39,3 +39,13 @@ export function messageDocumentId(employeeId: string, at = new Date()): string {
 export function boundaryEventDocumentId(employeeId: string, at = new Date()): string {
   return messageDocumentId(employeeId, at);
 }
+
+export function forgotLookupId(email: string): string {
+  return email
+    .trim()
+    .toLowerCase()
+    .replace('@', '_at_')
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80) || 'email';
+}

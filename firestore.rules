@@ -39,17 +39,33 @@ service cloud.firestore {
         (signedIn() &&
           resource.data.authUid == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['photoUrl', 'updatedAt']));
+            .hasOnly(['photoUrl', 'email', 'updatedAt']));
     }
 
     match /employeeMessages/{id} {
-      allow create: if signedIn()
-        && request.resource.data.employeeUid == request.auth.uid
-        && request.resource.data.kind in ['absence', 'issue']
-        && request.resource.data.status == 'open';
-      allow read: if isAdmin() ||
+      allow create: if (signedIn()
+          && request.resource.data.employeeUid == request.auth.uid
+          && request.resource.data.kind in ['absence', 'issue']
+          && request.resource.data.status == 'open')
+        || (request.resource.data.kind == 'forgot'
+          && request.resource.data.status == 'open'
+          && request.resource.data.employeeUid == ''
+          && request.resource.data.employeeId == 'FORGOT'
+          && request.resource.data.email is string
+          && request.resource.data.email.size() > 5
+          && !request.resource.data.keys().hasAny(['adminReply']));
+      allow get: if isAdmin() ||
+        (signedIn() && resource.data.employeeUid == request.auth.uid) ||
+        resource.data.kind == 'forgot';
+      allow list: if isAdmin() ||
         (signedIn() && resource.data.employeeUid == request.auth.uid);
       allow update, delete: if isAdmin();
+    }
+
+    match /forgotLookups/{emailId} {
+      allow get: if true;
+      allow create, update: if request.resource.data.keys().hasAll(['requestId', 'email']);
+      allow delete: if isAdmin();
     }
 
     match /usernames/{username} {

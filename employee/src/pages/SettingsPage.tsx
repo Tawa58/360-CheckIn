@@ -2,14 +2,21 @@ import {useEffect, useRef, useState} from 'react';
 import {AlertCircle, CheckCircle2, ImagePlus, Loader2, Trash2} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
 import {Avatar} from '../components/Avatar';
-import {clearProfilePhoto, compressProfileImage, saveProfilePhoto} from '../lib/profile';
+import {
+  clearProfilePhoto,
+  compressProfileImage,
+  saveProfileEmail,
+  saveProfilePhoto,
+} from '../lib/profile';
 
 export function SettingsPage() {
   const {employee, refreshEmployee} = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [email, setEmail] = useState(employee?.email ?? '');
 
   useEffect(() => {
     document.title = 'Settings · CheckIn360';
@@ -20,6 +27,21 @@ export function SettingsPage() {
   }
 
   const profile = employee;
+
+  async function onSaveEmail() {
+    setSavingEmail(true);
+    setError('');
+    setNotice('');
+    try {
+      await saveProfileEmail(profile.employeeId, email);
+      await refreshEmployee();
+      setNotice('Email saved. It is only used if you forget your login details.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save that email.');
+    } finally {
+      setSavingEmail(false);
+    }
+  }
 
   async function onFile(file: File | undefined) {
     if (!file) {
@@ -64,7 +86,7 @@ export function SettingsPage() {
         Settings
       </h1>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-        Add a photo for your profile. Theme is in the header.
+        Add a photo and a contact email. Theme is in the header.
       </p>
 
       <section className="card mt-6 p-5">
@@ -127,6 +149,34 @@ export function SettingsPage() {
             <p>{notice}</p>
           </div>
         ) : null}
+      </section>
+
+      <section className="card mt-4 p-5">
+        <p className="text-base font-semibold text-slate-900 dark:text-white">Contact email</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Used only if you forget your login details. Admin can reply in the app or send
+          the details here.
+        </p>
+        <label className="mt-5 block">
+          <span className="field-label">Email</span>
+          <input
+            type="email"
+            className="field-input mt-1.5"
+            value={email}
+            onChange={event => setEmail(event.target.value)}
+            placeholder="name@email.com"
+          />
+        </label>
+        <button
+          type="button"
+          disabled={savingEmail}
+          className="btn-primary mt-4 w-full"
+          onClick={() => {
+            onSaveEmail().catch(() => undefined);
+          }}>
+          {savingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Save email
+        </button>
       </section>
     </div>
   );

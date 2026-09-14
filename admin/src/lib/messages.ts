@@ -21,3 +21,19 @@ export async function updateMessageStatus(
   const {db} = requireFirebase();
   await updateDoc(doc(db, COLLECTIONS.employeeMessages, messageId), {status});
 }
+
+export async function replyToMessage(
+  messageId: string,
+  adminReply: string,
+): Promise<void> {
+  const reply = adminReply.trim();
+  if (!reply) {
+    throw new Error('Write a reply for the employee to see.');
+  }
+  const {db} = requireFirebase();
+  await updateDoc(doc(db, COLLECTIONS.employeeMessages, messageId), {
+    adminReply: reply,
+    adminRepliedAt: new Date().toISOString(),
+    status: 'seen',
+  });
+}

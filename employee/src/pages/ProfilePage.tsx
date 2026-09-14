@@ -96,6 +96,12 @@ export function ProfilePage() {
             <dt className="text-xs uppercase tracking-wide text-slate-400">Username</dt>
             <dd className="mt-1 text-base text-slate-800 dark:text-slate-200">{employee.username}</dd>
           </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">Email</dt>
+            <dd className="mt-1 text-base text-slate-800 dark:text-slate-200">
+              {employee.email || 'Add an email in Settings for login help'}
+            </dd>
+          </div>
         </dl>
       </section>
 

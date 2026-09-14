@@ -14,8 +14,11 @@ export interface Employee {
   updatedAt: string;
 }
 
-export type EmployeeMessageKind = 'absence' | 'issue';
+export type EmployeeMessageKind = 'absence' | 'issue' | 'forgot';
 export type EmployeeMessageStatus = 'open' | 'seen' | 'resolved';
+export type ForgotItem = 'Username' | 'Password' | 'Access code';
+
+export const FORGOT_ITEMS: ForgotItem[] = ['Username', 'Password', 'Access code'];
 
 export interface EmployeeMessage {
   messageId: string;
@@ -29,6 +32,11 @@ export interface EmployeeMessage {
   absenceDate?: string;
   status: EmployeeMessageStatus;
   createdAt: string;
+  email?: string;
+  username?: string;
+  forgotten?: ForgotItem[];
+  adminReply?: string;
+  adminRepliedAt?: string;
 }
 
 export interface AttendanceRecord {
@@ -111,6 +119,7 @@ export const COLLECTIONS = {
   usernames: 'usernames',
   accessCodes: 'accessCodes',
   employeeMessages: 'employeeMessages',
+  forgotLookups: 'forgotLookups',
   boundaryEvents: 'boundaryEvents',
   settings: 'settings',
 } as const;

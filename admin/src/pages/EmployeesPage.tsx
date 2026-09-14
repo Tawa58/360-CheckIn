@@ -245,6 +245,7 @@ export function EmployeesPage() {
                       </p>
                       <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
                         @{employee.username}
+                        {employee.email ? ` · ${employee.email}` : ''}
                       </p>
                     </div>
                   </div>
@@ -599,6 +600,7 @@ function RegisterModal({
   const [department, setDepartment] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -612,6 +614,7 @@ function RegisterModal({
         department,
         username,
         password,
+        email,
       });
       await onCreated(employee);
     } catch (err) {
@@ -648,6 +651,14 @@ function RegisterModal({
           type="password"
           placeholder="At least 6 characters"
         />
+        <Field
+          label="Email"
+          value={email}
+          onChange={setEmail}
+          type="email"
+          placeholder="name@email.com"
+          hint="Used only if they forget login details."
+        />
         {error ? (
           <div
             role="alert"
@@ -682,6 +693,7 @@ function EditModal({
 }) {
   const [fullName, setFullName] = useState(employee.fullName);
   const [department, setDepartment] = useState(employee.department);
+  const [email, setEmail] = useState(employee.email ?? '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -690,7 +702,7 @@ function EditModal({
     setLoading(true);
     setError('');
     try {
-      await updateEmployeeDetails(employee, {fullName, department});
+      await updateEmployeeDetails(employee, {fullName, department, email});
       await onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save changes.');
@@ -710,6 +722,15 @@ function EditModal({
           value={department}
           onChange={setDepartment}
           current={employee.department}
+        />
+        <Field
+          label="Email"
+          value={email}
+          onChange={setEmail}
+          type="email"
+          required={false}
+          placeholder="name@email.com"
+          hint="Used only if they forget login details."
         />
         {error ? (
           <div
@@ -841,6 +862,7 @@ function Field({
   type = 'text',
   placeholder,
   hint,
+  required = true,
 }: {
   label: string;
   value: string;
@@ -848,13 +870,14 @@ function Field({
   type?: string;
   placeholder?: string;
   hint?: string;
+  required?: boolean;
 }) {
   return (
     <label className="block">
       <span className="field-label">{label}</span>
       <input
         type={type}
-        required
+        required={required}
         placeholder={placeholder}
         className="field-input mt-1.5"
         value={value}

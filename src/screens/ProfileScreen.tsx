@@ -95,6 +95,10 @@ export function ProfileScreen() {
           <View className="mt-5 gap-3">
             <Detail label="Employee ID" value={profile.employeeId} />
             <Detail label="Username" value={profile.username} />
+            <Detail
+              label="Email"
+              value={profile.email || 'Add an email in Settings for login help'}
+            />
           </View>
         </Card>
       </View>

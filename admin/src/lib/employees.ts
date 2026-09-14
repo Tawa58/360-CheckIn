@@ -177,12 +177,17 @@ export async function registerEmployee(input: {
 
 export async function updateEmployeeDetails(
   employee: Employee,
-  details: {fullName: string; department: string},
+  details: {fullName: string; department: string; email?: string},
 ): Promise<void> {
   const {db} = requireFirebase();
+  const email = details.email?.trim().toLowerCase() ?? '';
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error('Enter a valid email address.');
+  }
   await updateDoc(doc(db, COLLECTIONS.employees, employee.employeeId), {
     fullName: details.fullName.trim(),
     department: requireDepartment(details.department),
+    email,
     updatedAt: new Date().toISOString(),
   });
 }

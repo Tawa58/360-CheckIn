@@ -11,6 +11,7 @@ import {AppHeader} from '../components/AppHeader';
 import {EmployeeTabBar} from '../components/EmployeeTabBar';
 import {Logo} from '../components/Logo';
 import {LoginScreen} from '../screens/LoginScreen';
+import {ForgotDetailsScreen} from '../screens/ForgotDetailsScreen';
 import {CheckInScreen} from '../screens/CheckInScreen';
 import {HistoryScreen} from '../screens/HistoryScreen';
 import {ProfileScreen} from '../screens/ProfileScreen';
@@ -71,7 +72,10 @@ export function RootNavigator() {
         {employee ? (
           <Stack.Screen name="Main" component={MainTabs} />
         ) : (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Forgot" component={ForgotDetailsScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

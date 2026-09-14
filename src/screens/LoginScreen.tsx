@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -7,8 +7,11 @@ import {
   StatusBar,
   Text,
   View,
+  type ScrollView as ScrollViewType,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {AlertCircle, Eye, EyeOff, KeyRound, Lock, UserRound} from 'lucide-react-native';
 import {Button} from '../components/Button';
 import {Input} from '../components/Input';
@@ -16,9 +19,12 @@ import {Logo} from '../components/Logo';
 import {ThemeToggle} from '../components/ThemeToggle';
 import {useAuth} from '../context/AuthContext';
 import {firebaseReady} from '../config/firebase';
+import type {RootStackParamList} from '../navigation/types';
 
 export function LoginScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const {login} = useAuth();
+  const scrollRef = useRef<ScrollViewType>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [accessCode, setAccessCode] = useState('');
@@ -43,18 +49,21 @@ export function LoginScreen() {
       className="flex-1 bg-brand-900 dark:bg-slate-950"
       edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="#0B3A42" />
+      <View className="flex-row items-center justify-between px-5 py-3">
+        <Logo variant="light" style={{height: 40, width: 168}} />
+        <ThemeToggle lightOnDark />
+      </View>
+
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}>
         <ScrollView
+          ref={scrollRef}
+          automaticallyAdjustKeyboardInsets
           keyboardShouldPersistTaps="handled"
-          contentContainerClassName="grow justify-center px-5 py-8"
+          contentContainerClassName="grow justify-center px-5 pb-28 pt-4"
           showsVerticalScrollIndicator={false}>
-          <View className="mb-8 flex-row items-center justify-between">
-            <Logo variant="light" style={{height: 40, width: 168}} />
-            <ThemeToggle lightOnDark />
-          </View>
-
           <View className="rounded-3xl bg-white p-5 dark:border dark:border-slate-800 dark:bg-slate-900">
             <Text className="text-sm text-slate-500 dark:text-slate-400">
               Use your username, password, and issued access code.
@@ -111,6 +120,9 @@ export function LoginScreen() {
                 onChangeText={setAccessCode}
                 placeholder="EMP-7XQ92K"
                 leftIcon={<KeyRound size={20} color="#94A3B8" />}
+                onFocus={() => {
+                  setTimeout(() => scrollRef.current?.scrollToEnd({animated: true}), 80);
+                }}
               />
             </View>
 
@@ -131,6 +143,14 @@ export function LoginScreen() {
                 onPress={onSubmit}
               />
             </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('Forgot')}
+              className="mt-4 items-center py-1">
+              <Text className="text-sm font-semibold text-brand-700 dark:text-teal-300">
+                Forgot details?
+              </Text>
+            </Pressable>
           </View>
 
           <Text className="mt-6 px-2 text-center text-xs leading-5 text-white/50">
