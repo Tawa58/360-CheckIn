@@ -2,7 +2,7 @@ import {defineConfig, loadEnv} from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {firebaseProcessEnvDefines} from '../shared/firebaseEnv';
+import {firebaseProcessEnvDefines} from '../shared/firebaseEnv.ts';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(rootDir, '..');

@@ -76,6 +76,14 @@ jobs:
       - if: steps.firebase.outputs.skip != 'true'
         run: npm --prefix desktop ci
 
+      - name: Stub React Native tsconfig for Vite
+        if: steps.firebase.outputs.skip != 'true'
+        shell: bash
+        run: |
+          mkdir -p node_modules/@react-native/typescript-config
+          printf '%s\n' '{"name":"@react-native/typescript-config","version":"0.0.0"}' > node_modules/@react-native/typescript-config/package.json
+          printf '%s\n' '{ "compilerOptions": { "strict": true, "skipLibCheck": true } }' > node_modules/@react-native/typescript-config/tsconfig.json
+
       - name: Build Windows installer
         if: steps.firebase.outputs.skip != 'true'
         env:
