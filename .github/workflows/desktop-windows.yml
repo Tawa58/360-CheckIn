@@ -1,0 +1,107 @@
+name: Windows desktop
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.repository == 'Tawa58/360-CheckIn'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check Firebase secrets
+        id: firebase
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+        run: |
+          if [ -z "$VITE_FIREBASE_API_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping desktop build. Add VITE_FIREBASE_* repository secrets on Tawa58/360-CheckIn."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      - uses: actions/setup-node@v5
+        if: steps.firebase.outputs.skip != 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            admin/package-lock.json
+            desktop/package-lock.json
+
+      - name: Write .env for the desktop bundle
+        if: steps.firebase.outputs.skip != 'true'
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_GEOFENCE_ID: ${{ secrets.VITE_GEOFENCE_ID }}
+          VITE_GEOFENCE_NAME: ${{ secrets.VITE_GEOFENCE_NAME }}
+          VITE_GEOFENCE_LAT: ${{ secrets.VITE_GEOFENCE_LAT }}
+          VITE_GEOFENCE_LNG: ${{ secrets.VITE_GEOFENCE_LNG }}
+          VITE_GEOFENCE_RADIUS: ${{ secrets.VITE_GEOFENCE_RADIUS }}
+        shell: bash
+        run: |
+          {
+            echo "VITE_USE_FIREBASE_EMULATOR=false"
+            echo "VITE_FIREBASE_API_KEY=$VITE_FIREBASE_API_KEY"
+            echo "VITE_FIREBASE_AUTH_DOMAIN=$VITE_FIREBASE_AUTH_DOMAIN"
+            echo "VITE_FIREBASE_PROJECT_ID=$VITE_FIREBASE_PROJECT_ID"
+            echo "VITE_FIREBASE_STORAGE_BUCKET=$VITE_FIREBASE_STORAGE_BUCKET"
+            echo "VITE_FIREBASE_MESSAGING_SENDER_ID=$VITE_FIREBASE_MESSAGING_SENDER_ID"
+            echo "VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID"
+            echo "VITE_FIREBASE_MEASUREMENT_ID=$VITE_FIREBASE_MEASUREMENT_ID"
+            echo "VITE_GEOFENCE_ID=${VITE_GEOFENCE_ID:-office}"
+            echo "VITE_GEOFENCE_NAME=${VITE_GEOFENCE_NAME:-Company premises}"
+            echo "VITE_GEOFENCE_LAT=${VITE_GEOFENCE_LAT:--17.878626}"
+            echo "VITE_GEOFENCE_LNG=${VITE_GEOFENCE_LNG:-30.675888}"
+            echo "VITE_GEOFENCE_RADIUS=${VITE_GEOFENCE_RADIUS:-120}"
+          } > .env
+
+      - if: steps.firebase.outputs.skip != 'true'
+        run: npm --prefix admin ci
+
+      - if: steps.firebase.outputs.skip != 'true'
+        run: npm --prefix desktop ci
+
+      - name: Build Windows installer
+        if: steps.firebase.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm --prefix desktop run dist
+
+      - name: Stage installer
+        if: steps.firebase.outputs.skip != 'true'
+        shell: bash
+        run: |
+          mkdir -p dist-desktop
+          cp desktop/release/CheckIn360-Setup.exe dist-desktop/CheckIn360-Setup.exe
+
+      - uses: actions/upload-artifact@v4
+        if: steps.firebase.outputs.skip != 'true'
+        with:
+          name: CheckIn360-windows
+          path: dist-desktop/CheckIn360-Setup.exe
+
+      - uses: softprops/action-gh-release@v2
+        if: steps.firebase.outputs.skip != 'true'
+        with:
+          tag_name: desktop-latest
+          name: CheckIn360 Windows
+          files: dist-desktop/CheckIn360-Setup.exe
+          make_latest: false
+          body: |
+            Windows installer for the CheckIn360 admin desktop app.
+            Employees still use the Android APK.

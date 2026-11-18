@@ -14,6 +14,8 @@ interface ImportMetaEnv {
   readonly VITE_GEOFENCE_LNG?: string;
   readonly VITE_GEOFENCE_RADIUS?: string;
   readonly VITE_ANDROID_APK_URL?: string;
+  readonly VITE_DESKTOP_SETUP_URL?: string;
+  readonly VITE_DESKTOP?: string;
 }
 
 interface ImportMeta {

@@ -1,10 +1,13 @@
 import {useEffect, useState, type FormEvent} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {AlertCircle, Eye, EyeOff, KeyRound, Loader2, Lock, UserRound} from 'lucide-react';
+import {AlertCircle, Eye, EyeOff, KeyRound, Lock, UserRound} from 'lucide-react';
 import {firebaseReady} from '../lib/firebase';
 import {useAuth} from '../context/AuthContext';
+import {pause} from '../lib/pause';
 import {Logo} from '../components/Logo';
 import {ThemeToggle} from '../components/ThemeToggle';
+import {BrandLoader} from '../components/BrandLoader';
+import {CenterToast} from '../components/CenterToast';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -15,6 +18,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     document.title = 'Employee login · CheckIn360';
@@ -26,16 +30,20 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(username, password, accessCode);
+      setLoading(false);
+      setSignedIn(true);
+      await pause(1400);
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in.');
-    } finally {
       setLoading(false);
     }
   }
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-brand-900 px-5 dark:bg-slate-950">
+      {loading ? <BrandLoader label="Checking your details…" /> : null}
+      {signedIn ? <CenterToast message="Login successful. Welcome to CheckIn360." /> : null}
       <div
         aria-hidden
         className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-brand-500/25 blur-3xl"
@@ -138,15 +146,11 @@ export function LoginPage() {
                 </div>
               ) : null}
 
-              <button type="submit" disabled={!firebaseReady || loading} className="btn-primary w-full">
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Please wait…
-                  </>
-                ) : (
-                  'Sign in'
-                )}
+              <button
+                type="submit"
+                disabled={!firebaseReady || loading || signedIn}
+                className="btn-primary w-full">
+                Sign in
               </button>
             </form>
           </div>

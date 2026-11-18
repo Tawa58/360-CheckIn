@@ -1,6 +1,6 @@
 import {useEffect} from 'react';
 import {Link} from 'react-router-dom';
-import {Download, ShieldCheck, Smartphone} from 'lucide-react';
+import {Download, Monitor, ShieldCheck, Smartphone} from 'lucide-react';
 import {Logo} from '../components/Logo';
 import {ThemeToggle} from '../components/ThemeToggle';
 
@@ -8,9 +8,13 @@ const APK_URL =
   import.meta.env.VITE_ANDROID_APK_URL ||
   'https://github.com/Tawa58/360-CheckIn/releases/latest/download/CheckIn360.apk';
 
+const DESKTOP_URL =
+  import.meta.env.VITE_DESKTOP_SETUP_URL ||
+  'https://github.com/Tawa58/360-CheckIn/releases/download/desktop-latest/CheckIn360-Setup.exe';
+
 export function GetAppPage() {
   useEffect(() => {
-    document.title = 'Get the employee app · CheckIn360';
+    document.title = 'Download CheckIn360 · CheckIn360';
   }, []);
 
   return (
@@ -32,21 +36,22 @@ export function GetAppPage() {
       </header>
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-lg items-center justify-center py-28">
-        <div className="w-full">
+        <div className="w-full space-y-4">
           <div className="rounded-3xl bg-white p-5 shadow-float dark:border dark:border-slate-800 dark:bg-slate-900 sm:p-7">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-800 dark:bg-brand-500/15 dark:text-brand-200">
-              <Smartphone className="h-6 w-6" />
+              <Monitor className="h-6 w-6" />
             </div>
             <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              CheckIn360 for Android
+              CheckIn360 for Windows
             </h1>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Employees check in from the Android app. Admins keep using this website.
+              Admins download the desktop app, install it, and sign in with their dashboard
+              email and password.
             </p>
 
-            <a href={APK_URL} className="btn-primary mt-6 w-full">
+            <a href={DESKTOP_URL} className="btn-primary mt-6 w-full">
               <Download className="h-4 w-4" />
-              Download Android app
+              Download Windows app
             </a>
 
             <ol className="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
@@ -54,21 +59,39 @@ export function GetAppPage() {
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-800 dark:bg-brand-500/15 dark:text-brand-200">
                   1
                 </span>
-                Open this page on your Android phone and tap Download.
+                Download CheckIn360-Setup.exe from this page.
               </li>
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-800 dark:bg-brand-500/15 dark:text-brand-200">
                   2
                 </span>
-                If asked, allow your browser to install unknown apps, then open the APK.
+                If Windows SmartScreen appears, choose More info, then Run anyway.
               </li>
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-800 dark:bg-brand-500/15 dark:text-brand-200">
                   3
                 </span>
-                Sign in with your username, password, and access code.
+                Install, open CheckIn360, and sign in as an administrator.
               </li>
             </ol>
+          </div>
+
+          <div className="rounded-3xl bg-white p-5 shadow-float dark:border dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-800 dark:bg-brand-500/15 dark:text-brand-200">
+              <Smartphone className="h-6 w-6" />
+            </div>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              CheckIn360 for Android
+            </h2>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Employees check in from the Android app with a live GPS fix inside the
+              geofence.
+            </p>
+
+            <a href={APK_URL} className="btn-primary mt-6 w-full">
+              <Download className="h-4 w-4" />
+              Download Android app
+            </a>
 
             <div className="mt-6 flex gap-3 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300" />
@@ -79,7 +102,7 @@ export function GetAppPage() {
             </div>
           </div>
 
-          <p className="mt-6 text-center text-xs text-white/50">
+          <p className="pt-2 text-center text-xs text-white/50">
             Admin?{' '}
             <Link to="/login" className="text-white/80 underline-offset-2 hover:underline">
               Sign in to the dashboard

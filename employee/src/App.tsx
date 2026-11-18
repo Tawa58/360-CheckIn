@@ -1,8 +1,7 @@
 import {Navigate, Route, Routes} from 'react-router-dom';
-import {Loader2} from 'lucide-react';
 import {useAuth} from './context/AuthContext';
 import {Layout} from './components/Layout';
-import {Logo} from './components/Logo';
+import {BrandLoader} from './components/BrandLoader';
 import {LoginPage} from './pages/LoginPage';
 import {CheckInPage} from './pages/CheckInPage';
 import {HistoryPage} from './pages/HistoryPage';
@@ -16,12 +15,8 @@ export default function App() {
 
   if (initializing) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-5 bg-brand-900 px-6 text-white">
-        <Logo variant="light" className="h-11 w-auto" />
-        <p className="flex items-center gap-2 text-sm text-white/70">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading CheckIn360…
-        </p>
+      <div className="min-h-dvh bg-brand-900">
+        <BrandLoader label="Loading CheckIn360…" />
       </div>
     );
   }

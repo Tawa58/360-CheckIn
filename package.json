@@ -9,6 +9,9 @@
     "start": "react-native start",
     "admin": "npm --prefix admin run dev",
     "employee": "npm --prefix employee run dev",
+    "desktop": "npm --prefix desktop run start",
+    "desktop:dev": "npx --yes concurrently -k \"npm run admin\" \"npm --prefix desktop run dev\"",
+    "desktop:dist": "npm --prefix desktop run dist",
     "android:apk": "node scripts/build-android-apk.mjs",
     "test": "jest"
   },

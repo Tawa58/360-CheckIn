@@ -9,10 +9,15 @@ const repoRoot = path.resolve(rootDir, '..');
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, repoRoot, 'VITE_');
+  const desktop = mode === 'desktop';
   return {
     plugins: [react()],
     envDir: repoRoot,
-    define: firebaseProcessEnvDefines(env),
+    base: desktop ? './' : '/',
+    define: {
+      ...firebaseProcessEnvDefines(env),
+      'import.meta.env.VITE_DESKTOP': JSON.stringify(desktop ? 'true' : ''),
+    },
     resolve: {
       alias: {
         '@shared': path.resolve(rootDir, '../shared'),

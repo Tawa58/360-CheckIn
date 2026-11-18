@@ -1,6 +1,11 @@
+function assetUrl(file: string): string {
+  const base = import.meta.env.BASE_URL || '/';
+  return `${base}${file.replace(/^\//, '')}`;
+}
+
 const LOCKUP = {
-  color: '/brand/logo.png',
-  light: '/brand/logo-light.png',
+  color: assetUrl('brand/logo.png'),
+  light: assetUrl('brand/logo-light.png'),
 } as const;
 
 const ALT = 'CheckIn360 — Smarter Workforce Management';
@@ -51,7 +56,7 @@ export function Logo({
 export function LogoMark({className}: {className?: string}) {
   return (
     <img
-      src="/brand/mark.png"
+      src={assetUrl('brand/mark.png')}
       alt=""
       aria-hidden
       width={113}

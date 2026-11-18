@@ -1,10 +1,15 @@
 import {useEffect, useState, type FormEvent} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
-import {AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, Smartphone} from 'lucide-react';
+import {AlertCircle, Eye, EyeOff, Lock, Mail, Monitor, Smartphone} from 'lucide-react';
 import {firebaseReady} from '../lib/firebase';
 import {loginAdmin} from '../lib/adminAuth';
+import {pause} from '../lib/pause';
 import {Logo} from '../components/Logo';
 import {ThemeToggle} from '../components/ThemeToggle';
+import {BrandLoader} from '../components/BrandLoader';
+import {CenterToast} from '../components/CenterToast';
+
+const isDesktop = import.meta.env.VITE_DESKTOP === 'true';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -13,6 +18,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     document.title = 'Admin login · CheckIn360';
@@ -24,16 +30,21 @@ export function LoginPage() {
     setLoading(true);
     try {
       await loginAdmin(email, password);
+      setLoading(false);
+      setSignedIn(true);
+      await pause(1400);
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in.');
-    } finally {
       setLoading(false);
     }
   }
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-brand-900 px-5 dark:bg-slate-950">
+      {loading ? <BrandLoader label="Checking your details…" /> : null}
+      {signedIn ? <CenterToast message="Login successful. Welcome to CheckIn360." /> : null}
+
       <div
         aria-hidden
         className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-brand-500/25 blur-3xl"
@@ -119,28 +130,34 @@ export function LoginPage() {
                 </div>
               ) : null}
 
-              <button type="submit" disabled={!firebaseReady || loading} className="btn-primary w-full">
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Please wait…
-                  </>
-                ) : (
-                  'Sign in'
-                )}
+              <button
+                type="submit"
+                disabled={!firebaseReady || loading || signedIn}
+                className="btn-primary w-full">
+                Sign in
               </button>
             </form>
           </div>
 
           <p className="mt-6 text-center text-xs text-white/50">
-            Employees use the Android app, not this dashboard.{' '}
+            Employees use the Android app, not this admin app.{' '}
             <Link
               to="/get-app"
               className="inline-flex items-center gap-1 text-white/80 underline-offset-2 hover:underline">
               <Smartphone className="h-3.5 w-3.5" />
-              Download CheckIn360
+              Get the apps
             </Link>
           </p>
+          {!isDesktop ? (
+            <p className="mt-2 text-center text-xs text-white/50">
+              <Link
+                to="/get-app"
+                className="inline-flex items-center gap-1 text-white/80 underline-offset-2 hover:underline">
+                <Monitor className="h-3.5 w-3.5" />
+                Download Windows desktop
+              </Link>
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

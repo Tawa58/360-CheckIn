@@ -1,9 +1,8 @@
 import {useEffect, useState} from 'react';
 import {Navigate, Route, Routes} from 'react-router-dom';
 import type {User} from 'firebase/auth';
-import {Loader2} from 'lucide-react';
 import {Layout} from './components/Layout';
-import {Logo} from './components/Logo';
+import {BrandLoader} from './components/BrandLoader';
 import {LoginPage} from './pages/LoginPage';
 import {DashboardPage} from './pages/DashboardPage';
 import {EmployeesPage} from './pages/EmployeesPage';
@@ -57,12 +56,8 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-5 bg-brand-900 px-6 text-white">
-        <Logo variant="light" className="h-11 w-auto" />
-        <p className="flex items-center gap-2 text-sm text-white/70">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading dashboard…
-        </p>
+      <div className="min-h-dvh bg-brand-900">
+        <BrandLoader label="Loading dashboard…" />
       </div>
     );
   }

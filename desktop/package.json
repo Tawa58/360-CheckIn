@@ -1,0 +1,53 @@
+{
+  "name": "checkin360-desktop",
+  "productName": "CheckIn360",
+  "private": true,
+  "version": "1.0.0",
+  "description": "CheckIn360 administrator desktop app",
+  "author": "CheckIn360",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "wait-on http-get://127.0.0.1:5173 && electron .",
+    "build:ui": "node build-ui.mjs",
+    "dist": "npm run build:ui && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "app.checkin360.admin",
+    "productName": "CheckIn360",
+    "copyright": "CheckIn360",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "icon.png",
+      "ui/**/*"
+    ],
+    "win": {
+      "icon": "icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "CheckIn360-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CheckIn360"
+    }
+  }
+}

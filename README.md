@@ -1,10 +1,11 @@
 # CheckIn360
 
-GPS-gated attendance. **Admin stays on the web.** **Employees use the Android app.**
+GPS-gated attendance. **Admins use the website or the Windows desktop app.** **Employees use the Android app.**
 
 | Surface | What it is | How it runs |
 | --- | --- | --- |
 | Admin dashboard | Website for registering staff, attendance, reports, inbox | Vercel (`admin/`) |
+| Admin desktop | Same admin dashboard as a Windows app | Electron (`desktop/`) |
 | Employee app | Android app for check-in, attendance, reports, profile | React Native APK |
 | Employee web | Same employee flows in a browser | Local testing only (`employee/`) |
 
@@ -48,7 +49,7 @@ Add these **repository secrets** on [Tawa58/360-CheckIn](https://github.com/Tawa
 
 `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, and optionally `VITE_FIREBASE_MEASUREMENT_ID` plus the `VITE_GEOFENCE_*` values from `.env.example`.
 
-Staff download the app from `/get-app` on the deployed admin site.
+Staff download the Android app from `/get-app` on the deployed admin site. Admins download the Windows installer from the same page.
 
 ## Admin on Vercel
 
@@ -65,6 +66,27 @@ npm run admin
 ```
 
 Open http://127.0.0.1:5173/
+
+## Admin desktop (Windows)
+
+The Electron app loads the same admin dashboard (Firebase login, roster, attendance, geofence). Employees still check in from Android.
+
+Run against the local admin site:
+
+```sh
+npm --prefix desktop install
+npm run desktop:dev
+```
+
+Build a Windows installer (`desktop/release/CheckIn360-Setup.exe`). Firebase keys come from the repo-root `.env`, same as the website:
+
+```sh
+npm run desktop:dist
+```
+
+GitHub Actions publishes that installer on every push to `main`. Download it from `/get-app` or:
+
+https://github.com/Tawa58/360-CheckIn/releases/download/desktop-latest/CheckIn360-Setup.exe
 
 ## Environment
 
