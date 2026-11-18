@@ -86,8 +86,6 @@ jobs:
 
       - name: Build Windows installer
         if: steps.firebase.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm --prefix desktop run dist
 
       - name: Stage installer
