@@ -6,11 +6,15 @@
   "description": "CheckIn360 administrator desktop app",
   "author": "CheckIn360",
   "main": "main.cjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tawa58/360-CheckIn.git"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "wait-on http-get://127.0.0.1:5173 && electron .",
     "build:ui": "node build-ui.mjs",
-    "dist": "npm run build:ui && electron-builder --win nsis"
+    "dist": "npm run build:ui && electron-builder --win nsis --publish never"
   },
   "devDependencies": {
     "electron": "44.4.5",
@@ -42,6 +46,7 @@
       ],
       "artifactName": "CheckIn360-Setup.${ext}"
     },
+    "publish": "never",
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
